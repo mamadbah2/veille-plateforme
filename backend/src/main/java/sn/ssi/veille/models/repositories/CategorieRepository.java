@@ -14,20 +14,4 @@ import java.util.Optional;
  */
 @Repository
 public interface CategorieRepository extends MongoRepository<Categorie, String> {
-
-    /**
-     * Recherche une catégorie par son nom.
-     *
-     * @param nomCategorie le nom de la catégorie
-     * @return un Optional contenant la catégorie si trouvée
-     */
-    Optional<Categorie> findByNomCategorie(String nomCategorie);
-
-    /**
-     * Vérifie si une catégorie existe avec ce nom.
-     *
-     * @param nomCategorie le nom à vérifier
-     * @return true si le nom existe déjà
-     */
-    boolean existsByNomCategorie(String nomCategorie);
 }

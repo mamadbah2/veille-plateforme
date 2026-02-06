@@ -14,13 +14,6 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
 
-/**
- * Entité représentant un article de veille cybersécurité.
- * Collecté depuis les différentes sources configurées.
- *
- * @author Équipe Backend SSI
- * @version 1.0
- */
 @Data
 @Builder
 @NoArgsConstructor
