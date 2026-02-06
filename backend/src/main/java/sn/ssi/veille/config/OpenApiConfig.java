@@ -40,19 +40,6 @@ import org.springframework.context.annotation.Configuration;
             - **Notifications** : Alertes sur les nouvelles menaces
             - **Sources** : Gestion des sources de veille (Admin)
             - **Catégories** : Classification des articles (Admin)
-            
-            ## Authentification
-            
-            L'API utilise JWT (JSON Web Token) pour l'authentification.
-            
-            1. Inscrivez-vous via `/api/v1/auth/register`
-            2. Connectez-vous via `/api/v1/auth/login`
-            3. Utilisez le token reçu dans le header `Authorization: Bearer <token>`
-            
-            ## Rôles
-            
-            - **USER** : Accès lecture aux articles, favoris, notifications
-            - **ADMIN** : Gestion complète (sources, catégories, utilisateurs)
             """,
         contact = @Contact(
             name = "Équipe Backend SSI",
@@ -64,16 +51,9 @@ import org.springframework.context.annotation.Configuration;
         )
     ),
     servers = {
-        @Server(url = "http://localhost:8080", description = "Serveur de développement"),
+        @Server(url = "http://localhost:4040", description = "Serveur de développement"),
         @Server(url = "https://api.veille.ssi.sn", description = "Serveur de production")
     }
-)
-@SecurityScheme(
-    name = "bearerAuth",
-    type = SecuritySchemeType.HTTP,
-    scheme = "bearer",
-    bearerFormat = "JWT",
-    description = "Token JWT obtenu via /api/v1/auth/login"
 )
 public class OpenApiConfig {
     // Configuration via annotations uniquement

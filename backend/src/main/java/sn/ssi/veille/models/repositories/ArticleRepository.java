@@ -9,7 +9,6 @@ import sn.ssi.veille.models.entities.Article;
 import sn.ssi.veille.models.entities.Gravite;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Optional;
 
 /**
