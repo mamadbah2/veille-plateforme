@@ -11,13 +11,7 @@ import jakarta.validation.constraints.NotBlank;
  */
 @Schema(description = "Données requises pour la connexion")
 public record LoginRequest(
-
-        @Schema(description = "Email ou nom d'utilisateur", example = "etudiant@ssi.sn")
-        @NotBlank(message = "L'identifiant est obligatoire")
         String identifier,
-
-        @Schema(description = "Mot de passe", example = "MotDePasse123!")
-        @NotBlank(message = "Le mot de passe est obligatoire")
         String password
 
 ) {}

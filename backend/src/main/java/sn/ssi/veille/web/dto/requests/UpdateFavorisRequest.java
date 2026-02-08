@@ -11,12 +11,7 @@ import jakarta.validation.constraints.Size;
  */
 @Schema(description = "Données pour mettre à jour un favori")
 public record UpdateFavorisRequest(
-
-        @Schema(description = "Note personnelle mise à jour", example = "Très important pour le rapport")
-        @Size(max = 500, message = "La note ne peut pas dépasser 500 caractères")
         String note,
-
-        @Schema(description = "Tags personnels mis à jour", example = "[\"urgent\", \"rapport\"]")
         String[] tagsPersonnels
 
 ) {}
