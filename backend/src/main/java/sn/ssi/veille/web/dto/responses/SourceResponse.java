@@ -2,6 +2,7 @@ package sn.ssi.veille.web.dto.responses;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import sn.ssi.veille.models.entities.MethodeCollecte;
+import sn.ssi.veille.models.entities.Source.SourceType;
 
 import java.time.LocalDateTime;
 
@@ -13,29 +14,54 @@ import java.time.LocalDateTime;
  */
 @Schema(description = "Informations d'une source de veille")
 public record SourceResponse(
+        // Identité
+        @Schema(description = "Identifiant unique") String id,
 
-        @Schema(description = "Identifiant unique", example = "65f1a2b3c4d5e6f7g8h9i0j1")
-        String id,
+        @Schema(description = "URL de la source") String url,
 
-        @Schema(description = "URL de la source", example = "https://www.reddit.com/r/netsec")
-        String url,
+        @Schema(description = "Nom de la source") String nomSource,
 
-        @Schema(description = "Nom de la source", example = "Reddit NetSec")
-        String nomSource,
+        @Schema(description = "Description") String description,
 
-        @Schema(description = "Méthode de collecte", example = "API")
-        MethodeCollecte methodeCollecte,
+        @Schema(description = "URL du logo") String logoUrl,
 
-        @Schema(description = "Source active", example = "true")
-        boolean active,
+        // Collecte
+        @Schema(description = "Méthode de collecte") MethodeCollecte methodeCollecte,
 
-        @Schema(description = "Fréquence de scraping en minutes", example = "60")
-        int frequenceScraping,
+        @Schema(description = "Source active") boolean active,
 
-        @Schema(description = "Date de dernière synchronisation")
-        LocalDateTime derniereSyncro,
+        @Schema(description = "Fréquence de scraping en minutes") int frequenceScraping,
 
-        @Schema(description = "Date de création")
-        LocalDateTime createdAt
+        @Schema(description = "Dernière synchronisation") LocalDateTime derniereSyncro,
 
-) {}
+        @Schema(description = "Prochaine synchronisation") LocalDateTime nextSyncAt,
+
+        // Configuration
+        @Schema(description = "Langue") String langue,
+
+        @Schema(description = "Priorité (1-10)") int priorite,
+
+        @Schema(description = "Catégorie par défaut") String categorieParDefaut,
+
+        // Crédibilité
+        @Schema(description = "Score de confiance (1-10)") int trustScore,
+
+        @Schema(description = "Source vérifiée") boolean verified,
+
+        @Schema(description = "Type de source") SourceType sourceType,
+
+        // Statistiques
+        @Schema(description = "Total articles collectés") long totalArticlesCollected,
+
+        @Schema(description = "Articles dernière synchro") int articlesLastSync,
+
+        // Erreurs
+        @Schema(description = "Dernière erreur") String lastError,
+
+        @Schema(description = "Date dernière erreur") LocalDateTime lastErrorAt,
+
+        @Schema(description = "Échecs consécutifs") int consecutiveFailures,
+
+        // Timestamps
+        @Schema(description = "Date de création") LocalDateTime createdAt) {
+}

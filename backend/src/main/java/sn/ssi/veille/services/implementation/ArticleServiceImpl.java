@@ -188,9 +188,28 @@ public class ArticleServiceImpl implements ArticleService {
             Source source = sourceRepository.findById(article.getSourceId()).orElse(null);
             if (source != null) {
                 sourceResponse = new SourceResponse(
-                        source.getId(), source.getUrl(), source.getNomSource(),
-                        source.getMethodeCollecte(), source.isActive(),
-                        source.getFrequenceScraping(), source.getDerniereSyncro(), source.getCreatedAt());
+                        source.getId(),
+                        source.getUrl(),
+                        source.getNomSource(),
+                        source.getDescription(),
+                        source.getLogoUrl(),
+                        source.getMethodeCollecte(),
+                        source.isActive(),
+                        source.getFrequenceScraping(),
+                        source.getDerniereSyncro(),
+                        source.getNextSyncAt(),
+                        source.getLangue(),
+                        source.getPriorite(),
+                        source.getCategorieParDefaut(),
+                        source.getTrustScore(),
+                        source.isVerified(),
+                        source.getSourceType(),
+                        source.getTotalArticlesCollected(),
+                        source.getArticlesLastSync(),
+                        source.getLastError(),
+                        source.getLastErrorAt(),
+                        source.getConsecutiveFailures(),
+                        source.getCreatedAt());
             }
         }
 
