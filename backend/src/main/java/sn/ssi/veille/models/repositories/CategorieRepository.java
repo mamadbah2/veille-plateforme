@@ -14,4 +14,6 @@ import java.util.Optional;
  */
 @Repository
 public interface CategorieRepository extends MongoRepository<Categorie, String> {
+
+    Optional<Categorie> findByNomCategorie(String nomCategorie);
 }
