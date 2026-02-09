@@ -28,8 +28,6 @@ public class MongoConfig extends AbstractMongoClientConfiguration {
         // Pas de variable, pas de properties. On met le lien en DUR.
         // String connectionString = System.getenv("SPRING_DATA_MONGODB_URI");
         
-        
-        
         System.out.println("------------------------------------------------");
         System.out.println("FORCING MONGO CONNECTION TO: " + connectionString);
         System.out.println("------------------------------------------------");
