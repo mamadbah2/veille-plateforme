@@ -4,6 +4,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 import sn.ssi.veille.services.implementation.SourceServiceImpl;
+import sn.ssi.veille.services.ScrapingService;
 import sn.ssi.veille.web.controllers.SourceController;
 import sn.ssi.veille.web.dto.requests.SourceRequest;
 import sn.ssi.veille.web.dto.responses.MessageResponse;
@@ -22,9 +23,11 @@ import java.util.List;
 public class SourceControllerImpl implements SourceController {
 
     private final SourceServiceImpl sourceService;
+    private final ScrapingService scrapingService;
 
-    public SourceControllerImpl(SourceServiceImpl sourceService) {
+    public SourceControllerImpl(SourceServiceImpl sourceService, ScrapingService scrapingService) {
         this.sourceService = sourceService;
+        this.scrapingService = scrapingService;
     }
 
     @Override
@@ -71,7 +74,9 @@ public class SourceControllerImpl implements SourceController {
 
     @Override
     public ResponseEntity<MessageResponse> triggerScraping(String id) {
-        // TODO: Implémenter le scraping à la demande
-        return ResponseEntity.ok(MessageResponse.success("Scraping déclenché pour la source " + id));
+        // Lance le scraping synchrone pour la source donnée
+        int count = scrapingService.scrapeSource(id).size();
+        return ResponseEntity
+                .ok(MessageResponse.success("Scraping terminé. " + count + " nouveaux articles collectés."));
     }
 }

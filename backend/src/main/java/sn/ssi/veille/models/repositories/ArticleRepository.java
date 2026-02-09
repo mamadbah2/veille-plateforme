@@ -17,4 +17,6 @@ public interface ArticleRepository extends MongoRepository<Article, String> {
     Page<Article> findByGravite(Gravite gravite, Pageable pageable);
 
     boolean existsByUrlOrigineAndSourceId(String urlOrigine, String sourceId);
+
+    boolean existsByUrlOrigine(String urlOrigine);
 }

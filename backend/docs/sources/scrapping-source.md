@@ -85,54 +85,42 @@ https://www.bleepingcomputer.com/news/technology/feed/    # Tech
 
 ---
 
-## Sources nécessitant approbation
+## Sources nécessitant approbation (OAuth)
 
-### 6. Reddit
-| Champ | Valeur |
-|-------|--------|
-| **URL** | https://www.reddit.com/r/netsec |
-| **Méthode** | API OAuth2 ⚠️ |
-| **Auth** | OAuth2 obligatoire |
-| **Approbation** | Requise depuis 2023 |
+### 6. Reddit (/r/netsec)
+**Option A : API Officielle** (Compliqué)
+1. Aller sur https://www.reddit.com/prefs/apps
+2. Créer une app (script)
+3. Obtenir `client_id` et `client_secret`
+4. Authentification OAuth2 obligatoire
 
-**Alternatives :**
-- RSS : `https://www.reddit.com/r/netsec/.rss` (limité)
-- Scraping HTML (respecter ToS)
+**Option B : RSS (Limité mais simple)**
+- URL : `https://www.reddit.com/r/netsec/.rss`
+- Inconvénient : Rate limit agressif, contenu tronqué
+
+---
+
+## Comment obtenir les clés ?
+
+### 🔑 NIST API Key
+1. Remplir le formulaire : https://nvd.nist.gov/developers/request-an-api-key
+2. Tu reçois la clé par email instantanément.
+3. On l'ajoute dans la config Source : `headers: {"apiKey": "TA_CLE"}`
+
+### 🔑 Reddit OAuth
+1. Créer compte Reddit
+2. Créer app sur https://www.reddit.com/prefs/apps
+3. Configurer `clientId`/`clientSecret` dans le backend.
 
 ---
 
 ## Récapitulatif par méthode
 
-| Source | API | RSS | Scraping | Auth |
-|--------|-----|-----|----------|------|
-| NIST NVD | ✅ | ❌ | ❌ | API Key |
-| Hacker News | ✅ | ❌ | ❌ | Aucune |
-| CERT-FR | ❌ | ✅ | ❌ | Aucune |
-| The Hacker News | ❌ | ✅ | ❌ | Aucune |
-| BleepingComputer | ❌ | ✅ | ❌ | Aucune |
-| Reddit | ⚠️ | ✅ | ⚠️ | OAuth2 |
-
----
-
-## Priorité d'implémentation
-
-1. **RSS** (le plus simple) : CERT-FR, The Hacker News, BleepingComputer
-2. **API gratuite** : Hacker News, NIST NVD
-3. **OAuth** (complexe) : Reddit
-
-## Dépendances Java recommandées
-
-```xml
-<!-- RSS Parser -->
-<dependency>
-    <groupId>com.rometools</groupId>
-    <artifactId>rome</artifactId>
-    <version>2.1.0</version>
-</dependency>
-
-<!-- HTTP Client -->
-<dependency>
-    <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot-starter-webflux</artifactId>
-</dependency>
-```
+| Source | API | RSS | Scraping | Auth | Statut |
+|--------|-----|-----|----------|------|--------|
+| NIST NVD | ✅ | ❌ | ❌ | API Key | ❌ |
+| Hacker News | ✅ | ❌ | ❌ | Aucune | ✅ |
+| CERT-FR | ❌ | ✅ | ❌ | Aucune | ✅ |
+| The Hacker News | ❌ | ✅ | ❌ | Aucune | ✅ |
+| BleepingComputer | ❌ | ✅ | ❌ | Aucune | ✅ |
+| Reddit | ⚠️ | ✅ | ⚠️ | OAuth2 | ❌ |

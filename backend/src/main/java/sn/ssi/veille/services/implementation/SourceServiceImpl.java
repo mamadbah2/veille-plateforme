@@ -20,6 +20,7 @@ import java.util.List;
  * @version 1.0
  */
 @Service
+@org.springframework.transaction.annotation.Transactional
 public class SourceServiceImpl implements SourceService {
 
     private final SourceRepository sourceRepository;
