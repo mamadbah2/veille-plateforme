@@ -13,6 +13,7 @@ import sn.ssi.veille.models.repositories.ArticleRepository;
 import sn.ssi.veille.models.repositories.CategorieRepository;
 import sn.ssi.veille.models.repositories.SourceRepository;
 import sn.ssi.veille.services.ArticleService;
+import sn.ssi.veille.services.CrossReferenceService;
 import sn.ssi.veille.web.dto.requests.ArticleRequest;
 import sn.ssi.veille.web.dto.requests.ArticleSearchCriteria;
 import sn.ssi.veille.web.dto.responses.*;
@@ -33,13 +34,16 @@ public class ArticleServiceImpl implements ArticleService {
     private final ArticleRepository articleRepository;
     private final SourceRepository sourceRepository;
     private final CategorieRepository categorieRepository;
+    private final CrossReferenceService crossReferenceService;
 
     public ArticleServiceImpl(ArticleRepository articleRepository,
             SourceRepository sourceRepository,
-            CategorieRepository categorieRepository) {
+            CategorieRepository categorieRepository,
+            CrossReferenceService crossReferenceService) {
         this.articleRepository = articleRepository;
         this.sourceRepository = sourceRepository;
         this.categorieRepository = categorieRepository;
+        this.crossReferenceService = crossReferenceService;
     }
 
     @Override
@@ -59,6 +63,14 @@ public class ArticleServiceImpl implements ArticleService {
                 .build();
 
         Article saved = articleRepository.save(article);
+
+        // Trigger correlation
+        try {
+            crossReferenceService.processCorrelations(saved);
+        } catch (Exception e) {
+            // Log but don't fail creation
+        }
+
         return toFullResponse(saved);
     }
 
@@ -140,6 +152,14 @@ public class ArticleServiceImpl implements ArticleService {
             article.setAuteur(request.auteur());
 
         Article updated = articleRepository.save(article);
+
+        // Trigger correlation
+        try {
+            crossReferenceService.processCorrelations(updated);
+        } catch (Exception e) {
+            // Log but don't fail update
+        }
+
         return toFullResponse(updated);
     }
 
@@ -176,6 +196,21 @@ public class ArticleServiceImpl implements ArticleService {
     @Override
     public boolean articleExists(String urlOrigine, String sourceId) {
         return articleRepository.existsByUrlOrigineAndSourceId(urlOrigine, sourceId);
+    }
+
+    @Override
+    public List<ArticleSummaryResponse> getRelatedArticles(String id) {
+        Article article = articleRepository.findById(id)
+                .orElseThrow(() -> new ArticleNotFoundException("Article non trouvé avec l'id: " + id));
+
+        if (article.getRelatedArticleIds() == null || article.getRelatedArticleIds().isEmpty()) {
+            return List.of();
+        }
+
+        List<Article> related = articleRepository.findAllById(article.getRelatedArticleIds());
+        return related.stream()
+                .map(this::toSummaryResponse)
+                .toList();
     }
 
     // ==================== HELPERS ====================

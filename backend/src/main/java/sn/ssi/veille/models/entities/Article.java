@@ -108,4 +108,10 @@ public class Article {
      */
     @LastModifiedDate
     private LocalDateTime updatedAt;
+
+    /**
+     * Liste des IDs d'articles liés (Cross-referencing).
+     */
+    @Builder.Default
+    private java.util.List<String> relatedArticleIds = new java.util.ArrayList<>();
 }

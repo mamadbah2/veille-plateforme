@@ -11,6 +11,7 @@ import sn.ssi.veille.models.entities.*;
 import sn.ssi.veille.models.repositories.ArticleRepository;
 import sn.ssi.veille.models.repositories.SourceRepository;
 import sn.ssi.veille.services.AIService;
+import sn.ssi.veille.services.CrossReferenceService;
 import sn.ssi.veille.services.ScrapingService;
 
 import com.microsoft.playwright.Browser;
@@ -42,15 +43,42 @@ public class ScrapingServiceImpl implements ScrapingService {
     private final sn.ssi.veille.models.repositories.ArticleRepository articleRepository;
     private final WebClient webClient;
     private final AIService aiService;
+    private final CrossReferenceService crossReferenceService;
+    private final sn.ssi.veille.models.repositories.CategorieRepository categorieRepository;
 
     public ScrapingServiceImpl(SourceRepository sourceRepository,
             ArticleRepository articleRepository,
             WebClient.Builder webClientBuilder,
-            AIService aiService) {
+            AIService aiService,
+            CrossReferenceService crossReferenceService,
+            sn.ssi.veille.models.repositories.CategorieRepository categorieRepository) {
         this.sourceRepository = sourceRepository;
         this.articleRepository = articleRepository;
         this.webClient = webClientBuilder.build();
         this.aiService = aiService;
+        this.crossReferenceService = crossReferenceService;
+        this.categorieRepository = categorieRepository;
+    }
+
+    // ... existing methods ...
+
+    @Override
+    public String categorizeArticle(Article article) {
+        if (!aiService.isAvailable()) {
+            return "Non catégorisé (IA indisponible)";
+        }
+
+        try {
+            Article enriched = aiService.enrichArticle(article).join();
+            if (enriched.getCategorieId() != null) {
+                return categorieRepository.findById(enriched.getCategorieId())
+                        .map(Categorie::getNomCategorie)
+                        .orElse("Catégorie inconnue (ID: " + enriched.getCategorieId() + ")");
+            }
+        } catch (Exception e) {
+            log.error("Erreur classification IA: {}", e.getMessage());
+        }
+        return "Non catégorisé";
     }
 
     @Override
@@ -415,6 +443,13 @@ public class ScrapingServiceImpl implements ScrapingService {
                     // Enrichissement séquentiel pour ne pas surcharger le GPU local
                     Article enriched = aiService.enrichArticle(article).join();
                     articleRepository.save(enriched);
+
+                    // Cross-referencing (Corrélation)
+                    try {
+                        crossReferenceService.processCorrelations(enriched);
+                    } catch (Exception e) {
+                        log.error("⚠️ Cross-ref failed for {}: {}", enriched.getId(), e.getMessage());
+                    }
                 } catch (Exception e) {
                     log.error("Erreur enrichment article {}: {}", article.getId(), e.getMessage());
                 }
@@ -460,12 +495,6 @@ public class ScrapingServiceImpl implements ScrapingService {
             return "";
         return content.replaceAll("<script.*?>.*?</script>", "") // Retire les scripts
                 .replaceAll("javascript:", ""); // Retire les appels JS
-    }
-
-    @Override
-    public String categorizeArticle(Article article) {
-        // TODO: Intégrer LM Studio pour la classification IA
-        return "Non catégorisé";
     }
 
     @Override

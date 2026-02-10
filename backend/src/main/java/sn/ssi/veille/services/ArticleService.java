@@ -32,4 +32,6 @@ public interface ArticleService {
     String generateAISummary(String articleId, String apiKey);
 
     boolean articleExists(String urlOrigine, String sourceId);
+
+    java.util.List<ArticleSummaryResponse> getRelatedArticles(String id);
 }

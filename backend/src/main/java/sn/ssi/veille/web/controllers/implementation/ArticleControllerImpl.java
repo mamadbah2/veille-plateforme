@@ -37,6 +37,11 @@ public class ArticleControllerImpl implements ArticleController {
     }
 
     @Override
+    public ResponseEntity<java.util.List<ArticleSummaryResponse>> getRelatedArticles(String id) {
+        return ResponseEntity.ok(articleService.getRelatedArticles(id));
+    }
+
+    @Override
     public ResponseEntity<PageResponse<ArticleSummaryResponse>> searchArticles(ArticleSearchCriteria criteria) {
         return ResponseEntity.ok(articleService.searchArticles(criteria));
     }

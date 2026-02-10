@@ -13,4 +13,8 @@ public interface SourceRepository extends MongoRepository<Source, String> {
     Optional<Source> findByUrl(String url);
 
     List<Source> findByActiveTrue();
+
+    boolean existsByNomSource(String nomSource);
+
+    Optional<Source> findByNomSource(String nomSource);
 }

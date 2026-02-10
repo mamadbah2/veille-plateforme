@@ -19,4 +19,6 @@ public interface ArticleRepository extends MongoRepository<Article, String> {
     boolean existsByUrlOrigineAndSourceId(String urlOrigine, String sourceId);
 
     boolean existsByUrlOrigine(String urlOrigine);
+
+    java.util.List<Article> findByDatePublicationAfter(java.time.LocalDateTime date);
 }

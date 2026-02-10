@@ -43,11 +43,16 @@ public class LMStudioService implements AIService {
     @Override
     public boolean isAvailable() {
         try {
-            // Simple ping to check if LM Studio is up
-            // Note: This endpoint might need adjustment depending on LM Studio version
-            String modelId = aiConfig.getModel();
-            return modelId != null && !modelId.isEmpty();
+            // Real ping to check if LM Studio is up and responding
+            return webClient.get()
+                    .uri("/models")
+                    .retrieve()
+                    .toBodilessEntity()
+                    .map(response -> response.getStatusCode().is2xxSuccessful())
+                    .blockOptional(java.time.Duration.ofSeconds(2))
+                    .orElse(false);
         } catch (Exception e) {
+            log.debug("LM Studio n'est pas accessible : {}", e.getMessage());
             return false;
         }
     }
@@ -59,19 +64,34 @@ public class LMStudioService implements AIService {
             return CompletableFuture.completedFuture(article);
         }
 
-        // Advanced Strategy: JSON Mode + CTI Expert Role
+        // Universal Prompt (IT Watch / Veille Informatique)
         String systemPrompt = """
-                You are an expert Cyber Threat Intelligence (CTI) analyst.
-                Your task is to extract structured data from security articles.
-                Output MUST be raw JSON only. No markdown, no explanations.
+                You are an expert IT Watch analyst (Veille Informatique).
+                Analyze the provided article and categorize it.
+
+                RESPONSE FORMAT MUST BE CLEAN JSON ONLY.
                 Strict Schema:
                 {
                   "summary": "Technical summary in French (max 30 words)",
-                  "gravity": "Integer 1-5 (5=Critical CVE/RCE, 1=Info)",
-                  "category": "One of [VULNERABILITY, MALWARE, PHISHING, DATA_BREACH, OTHER]",
-                  "tags": ["tag1", "tag2", "tag3"]
+                  "gravity": "Integer 1-5 (5=Critical/Breaking Change, 1=Info/Release)",
+                  "category": "One of [PROGRAMMING, DATA_SCIENCE, CYBERSECURITY, DEVOPS, TECHNOLOGY]",
+                  "tags": ["tag1", "tag2", "tag3", "tag4", "tag5"]
                 }
+
+                GUIDELINES FOR CLASSIFICATION:
+                1. PROGRAMMING: Software Engineering, Languages (Java, Python, Rust...), Web, Mobile, Architecture.
+                   - Tags: Software Architecture, Clean Code, Web Development, Mobile, Java, Python, JavaScript, Rust, Go, Algorithms
+                2. DATA_SCIENCE: AI, Machine Learning, Deep Learning, Big Data.
+                   - Tags: Artificial Intelligence, Machine Learning, Deep Learning, LLMs, NLP, Computer Vision, Data Engineering, Big Data
+                3. CYBERSECURITY: Security, Hacks, Vulnerabilities, Crypto.
+                   - Tags: Vulnerability, Malware, Ransomware, Network Security, Cryptography, Hacking, Privacy, OSINT, AppSec
+                4. DEVOPS: Cloud, Infrastructure, CI/CD, Containers.
+                   - Tags: Cloud Computing, AWS, Azure, Google Cloud, Kubernetes, Docker, CI/CD, Linux, SRE
+                5. TECHNOLOGY: General Tech, Business, Startups, Hardware.
+                   - Tags: Startup, Big Tech, Hardware, Gadgets, Innovation, Tech Policy, Apple, Microsoft, Google
                 """;
+
+        String prompt = buildPrompt(article);
 
         return webClient.post()
                 .bodyValue(Map.of(
@@ -80,8 +100,7 @@ public class LMStudioService implements AIService {
                                 Map.of("role", "system", "content", systemPrompt),
                                 Map.of("role", "user", "content", prompt)),
                         "temperature", 0.1, // Cryogenic temperature for strict classification
-                        "max_tokens", 2000,
-                        "response_format", Map.of("type", "json_object"))) // Force JSON Mode
+                        "max_tokens", 2000))
                 .retrieve()
                 .bodyToMono(Map.class)
                 .map(response -> parseAIResponse(response, article))
