@@ -10,5 +10,6 @@ import org.springframework.context.annotation.Configuration;
 public class AIConfig {
     private String url;
     private String model;
+    private String embeddingModel;
     private Long timeout;
 }

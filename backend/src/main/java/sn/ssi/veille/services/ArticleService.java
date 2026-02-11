@@ -13,6 +13,8 @@ public interface ArticleService {
 
     ArticleResponse getArticleById(String id);
 
+    sn.ssi.veille.models.entities.Article getArticleEntityById(String id); // For verification only
+
     PageResponse<ArticleSummaryResponse> getLatestArticles(int page, int size);
 
     PageResponse<ArticleSummaryResponse> searchArticles(ArticleSearchCriteria criteria);

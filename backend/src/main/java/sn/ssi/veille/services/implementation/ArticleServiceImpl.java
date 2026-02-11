@@ -87,6 +87,12 @@ public class ArticleServiceImpl implements ArticleService {
     }
 
     @Override
+    public Article getArticleEntityById(String id) {
+        return articleRepository.findById(id)
+                .orElseThrow(() -> new ArticleNotFoundException("Article non trouvé avec l'id: " + id));
+    }
+
+    @Override
     public PageResponse<ArticleSummaryResponse> getLatestArticles(int page, int size) {
         PageRequest pageRequest = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "datePublication"));
         Page<Article> articlePage = articleRepository.findAll(pageRequest);

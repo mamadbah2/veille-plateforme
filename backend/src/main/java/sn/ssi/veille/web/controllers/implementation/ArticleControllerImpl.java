@@ -9,6 +9,7 @@ import sn.ssi.veille.web.controllers.ArticleController;
 import sn.ssi.veille.web.dto.requests.ArticleRequest;
 import sn.ssi.veille.web.dto.requests.ArticleSearchCriteria;
 import sn.ssi.veille.web.dto.responses.*;
+import sn.ssi.veille.web.dto.responses.MessageResponse;
 
 /**
  * Implémentation du contrôleur Article.
@@ -21,14 +22,21 @@ import sn.ssi.veille.web.dto.responses.*;
 public class ArticleControllerImpl implements ArticleController {
 
     private final ArticleServiceImpl articleService;
+    private final sn.ssi.veille.services.AIService aiService;
 
-    public ArticleControllerImpl(ArticleServiceImpl articleService) {
+    public ArticleControllerImpl(ArticleServiceImpl articleService, sn.ssi.veille.services.AIService aiService) {
         this.articleService = articleService;
+        this.aiService = aiService;
     }
 
     @Override
     public ResponseEntity<PageResponse<ArticleSummaryResponse>> getLatestArticles(int page, int size) {
         return ResponseEntity.ok(articleService.getLatestArticles(page, size));
+    }
+
+    @Override
+    public ResponseEntity<sn.ssi.veille.models.entities.Article> verifyArticle(String id) {
+        return ResponseEntity.ok(articleService.getArticleEntityById(id));
     }
 
     @Override
@@ -96,5 +104,12 @@ public class ArticleControllerImpl implements ArticleController {
     public ResponseEntity<MessageResponse> generateAISummary(String id, String apiKey) {
         String summary = articleService.generateAISummary(id, apiKey);
         return ResponseEntity.ok(MessageResponse.success(summary));
+    }
+
+    @Override
+    public ResponseEntity<java.util.List<Double>> testEmbedding(java.util.Map<String, String> payload) {
+        String text = payload.getOrDefault("text", "Test embedding");
+        var vector = aiService.getEmbeddings(text).join();
+        return ResponseEntity.ok(vector);
     }
 }

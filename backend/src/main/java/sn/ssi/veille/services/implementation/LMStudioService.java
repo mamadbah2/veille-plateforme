@@ -45,7 +45,7 @@ public class LMStudioService implements AIService {
         try {
             // Real ping to check if LM Studio is up and responding
             return webClient.get()
-                    .uri("/models")
+                    .uri("/v1/models")
                     .retrieve()
                     .toBodilessEntity()
                     .map(response -> response.getStatusCode().is2xxSuccessful())
@@ -94,6 +94,7 @@ public class LMStudioService implements AIService {
         String prompt = buildPrompt(article);
 
         return webClient.post()
+                .uri("/v1/chat/completions")
                 .bodyValue(Map.of(
                         "model", aiConfig.getModel(),
                         "messages", List.of(
@@ -186,6 +187,49 @@ public class LMStudioService implements AIService {
                 .createdAt(java.time.LocalDateTime.now())
                 .updatedAt(java.time.LocalDateTime.now())
                 .build());
+    }
+
+    @Override
+    public CompletableFuture<List<Double>> getEmbeddings(String text) {
+        if (!isAvailable()) {
+            return CompletableFuture.completedFuture(List.of());
+        }
+
+        return webClient.post()
+                .uri("/v1/embeddings") // Corrected endpoint for standard OpenAI compatibility
+                .bodyValue(Map.of(
+                        "model",
+                        aiConfig.getEmbeddingModel() != null ? aiConfig.getEmbeddingModel() : aiConfig.getModel(),
+                        "input", text))
+                .retrieve()
+                .bodyToMono(Map.class)
+                .map(response -> {
+                    List<Double> embedding = parseEmbeddingResponse((Map<String, Object>) response);
+                    return embedding;
+                })
+                .toFuture()
+                .exceptionally(ex -> {
+                    log.error("Erreur génération embedding: {}", ex.getMessage());
+                    return List.of();
+                });
+    }
+
+    private List<Double> parseEmbeddingResponse(Map<String, Object> response) {
+        try {
+            List<Map<String, Object>> data = (List<Map<String, Object>>) response.get("data");
+            if (data != null && !data.isEmpty()) {
+                // OpenAI format: data[0].embedding
+                Object embeddingObj = data.get(0).get("embedding");
+                if (embeddingObj instanceof List) {
+                    return ((List<?>) embeddingObj).stream()
+                            .map(obj -> ((Number) obj).doubleValue())
+                            .toList();
+                }
+            }
+        } catch (Exception e) {
+            log.error("Erreur parsing embeddings: {}", e.getMessage());
+        }
+        return List.of();
     }
 
     // DTO interne pour le parsing

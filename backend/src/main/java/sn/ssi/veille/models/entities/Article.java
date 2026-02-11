@@ -114,4 +114,15 @@ public class Article {
      */
     @Builder.Default
     private java.util.List<String> relatedArticleIds = new java.util.ArrayList<>();
+
+    /**
+     * Vecteur d'embedding (représentation sémantique).
+     */
+    private java.util.List<Double> vector;
+
+    /**
+     * ID de l'histoire (Cluster) auquel l'article appartient.
+     */
+    @Indexed
+    private String storyId;
 }

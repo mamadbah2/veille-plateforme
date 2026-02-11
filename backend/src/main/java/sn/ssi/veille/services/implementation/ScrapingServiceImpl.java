@@ -45,19 +45,76 @@ public class ScrapingServiceImpl implements ScrapingService {
     private final AIService aiService;
     private final CrossReferenceService crossReferenceService;
     private final sn.ssi.veille.models.repositories.CategorieRepository categorieRepository;
+    private final sn.ssi.veille.services.ClusteringService clusteringService;
 
     public ScrapingServiceImpl(SourceRepository sourceRepository,
             ArticleRepository articleRepository,
             WebClient.Builder webClientBuilder,
             AIService aiService,
             CrossReferenceService crossReferenceService,
-            sn.ssi.veille.models.repositories.CategorieRepository categorieRepository) {
+            sn.ssi.veille.models.repositories.CategorieRepository categorieRepository,
+            sn.ssi.veille.services.ClusteringService clusteringService) {
         this.sourceRepository = sourceRepository;
         this.articleRepository = articleRepository;
         this.webClient = webClientBuilder.build();
         this.aiService = aiService;
         this.crossReferenceService = crossReferenceService;
         this.categorieRepository = categorieRepository;
+        this.clusteringService = clusteringService;
+    }
+
+    // ... existing methods ...
+
+    /**
+     * Sauvegarde uniquement les nouveaux articles (évite les doublons)
+     */
+    private List<Article> saveNewArticles(List<Article> articles, Source source) {
+        List<Article> newArticles = new ArrayList<>();
+
+        for (Article article : articles) {
+            // Nettoyage de sécurité (XSS)
+            article.setTitre(sanitizeContent(article.getTitre()));
+            article.setContenu(sanitizeContent(article.getContenu()));
+
+            // Vérifier si l'article existe déjà par URL
+            if (!articleRepository.existsByUrlOrigine(article.getUrlOrigine())) {
+                Article saved = articleRepository.save(article);
+                newArticles.add(saved);
+            }
+        }
+
+        // Enrichissement IA (Post-traitement)
+        if (!newArticles.isEmpty() && aiService.isAvailable()) {
+            log.info("Enrichissement IA de {} articles...", newArticles.size());
+            for (Article article : newArticles) {
+                try {
+                    // 1. Enrichissement séquentiel (Catégories, Tags, Gravité)
+                    Article enriched = aiService.enrichArticle(article).join();
+                    articleRepository.save(enriched);
+
+                    // 2. Clustering (Calcul Vectoriel + Story Grouping)
+                    Article clustered = enriched;
+                    try {
+                        clustered = clusteringService.processClustering(enriched).join();
+                    } catch (Exception e) {
+                        log.error("⚠️ Clustering failed for {}: {}", enriched.getId(), e.getMessage());
+                    }
+
+                    // 3. Cross-referencing (Corrélation par Tags)
+                    try {
+                        crossReferenceService.processCorrelations(clustered);
+                    } catch (Exception e) {
+                        log.error("⚠️ Cross-ref failed for {}: {}", clustered.getId(), e.getMessage());
+                    }
+                } catch (Exception e) {
+                    log.error("Erreur enrichment article {}: {}", article.getId(), e.getMessage());
+                }
+            }
+        }
+
+        log.info("Source {} : {}/{} nouveaux articles sauvegardés",
+                source.getNomSource(), newArticles.size(), articles.size());
+        return newArticles;
     }
 
     // ... existing methods ...
@@ -415,50 +472,6 @@ public class ScrapingServiceImpl implements ScrapingService {
     }
 
     record CvssData(Double baseScore) {
-    }
-
-    /**
-     * Sauvegarde uniquement les nouveaux articles (évite les doublons)
-     */
-    private List<Article> saveNewArticles(List<Article> articles, Source source) {
-        List<Article> newArticles = new ArrayList<>();
-
-        for (Article article : articles) {
-            // Nettoyage de sécurité (XSS)
-            article.setTitre(sanitizeContent(article.getTitre()));
-            article.setContenu(sanitizeContent(article.getContenu()));
-
-            // Vérifier si l'article existe déjà par URL
-            if (!articleRepository.existsByUrlOrigine(article.getUrlOrigine())) {
-                Article saved = articleRepository.save(article);
-                newArticles.add(saved);
-            }
-        }
-
-        // Enrichissement IA (Post-traitement)
-        if (!newArticles.isEmpty() && aiService.isAvailable()) {
-            log.info("Enrichissement IA de {} articles...", newArticles.size());
-            for (Article article : newArticles) {
-                try {
-                    // Enrichissement séquentiel pour ne pas surcharger le GPU local
-                    Article enriched = aiService.enrichArticle(article).join();
-                    articleRepository.save(enriched);
-
-                    // Cross-referencing (Corrélation)
-                    try {
-                        crossReferenceService.processCorrelations(enriched);
-                    } catch (Exception e) {
-                        log.error("⚠️ Cross-ref failed for {}: {}", enriched.getId(), e.getMessage());
-                    }
-                } catch (Exception e) {
-                    log.error("Erreur enrichment article {}: {}", article.getId(), e.getMessage());
-                }
-            }
-        }
-
-        log.info("Source {} : {}/{} nouveaux articles sauvegardés",
-                source.getNomSource(), newArticles.size(), articles.size());
-        return newArticles;
     }
 
     /**

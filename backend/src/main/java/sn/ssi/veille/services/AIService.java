@@ -24,4 +24,12 @@ public interface AIService {
      * @return true si disponible.
      */
     boolean isAvailable();
+
+    /**
+     * Génère un vecteur d'embedding pour le texte donné.
+     *
+     * @param text Le texte à vectoriser.
+     * @return Une liste de doubles représentant le vecteur.
+     */
+    CompletableFuture<java.util.List<Double>> getEmbeddings(String text);
 }
