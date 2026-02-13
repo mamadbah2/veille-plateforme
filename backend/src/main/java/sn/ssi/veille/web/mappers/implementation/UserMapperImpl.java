@@ -10,10 +10,15 @@ public class UserMapperImpl implements UserMapper {
 
 	@Override
 	public UserResponse toResponse(User user) {
-		// TODO Auto-generated method stub
-		throw new UnsupportedOperationException("Unimplemented method 'toResponse'");
-	}
-
+    return new UserResponse(
+        user.getId(),
+        user.getEmail(),
+        user.getUsername(),
+        user.getRoles(),
+        user.isEnabled(),
+        user.getCreatedAt()
+    );
+}
 	@Override
 	public User toEntity(RegisterRequest request) {
 	    if (request == null) {

@@ -33,14 +33,26 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public AuthResponse register(RegisterRequest request) {
-        User user = userMapper.toEntity(request);
-        userRepository.save(user);
+    User user = userMapper.toEntity(request);
+    userRepository.save(user);
 
-        throw new UnsupportedOperationException(
-            "Unimplemented method 'register'"
-        );
-    }
-
+    // Générer le token JWT pour l'utilisateur
+    String accessToken = jwtService.generateToken(user);
+    
+    // Obtenir la durée d'expiration du token
+    long expiresIn = jwtService.getExpirationTime();
+    
+    // Convertir User en UserResponse
+    UserResponse userResponse = userMapper.toResponse(user);
+    
+    // Retourner la réponse d'authentification
+    return new AuthResponse(
+        accessToken,
+        "Bearer",
+        expiresIn,
+        userResponse
+    );
+}
     @Override
     public AuthResponse login(LoginRequest request) {
         try {
@@ -56,7 +68,7 @@ public class AuthServiceImpl implements AuthService {
                         authentication,
                         request.identifier()
                     ),
-                    "JWT",
+                    "Bearer",
                     jwtService.getExpirationTime().toEpochMilli(), // Je suis pas trop sur de ca quand meme.
                     userMapper.toResponse(
                         userRepository
