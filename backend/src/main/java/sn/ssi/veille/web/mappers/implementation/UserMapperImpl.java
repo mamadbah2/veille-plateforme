@@ -1,11 +1,13 @@
 package sn.ssi.veille.web.mappers.implementation;
 
+import org.springframework.stereotype.Component;
 import sn.ssi.veille.web.dto.requests.RegisterRequest;
 import sn.ssi.veille.web.dto.requests.UpdateUserRequest;
 import sn.ssi.veille.web.dto.responses.UserResponse;
 import sn.ssi.veille.web.mappers.UserMapper;
 import sn.ssi.veille.models.entities.User;
 
+@Component
 public class UserMapperImpl implements UserMapper {
 
 	@Override
@@ -34,8 +36,18 @@ public class UserMapperImpl implements UserMapper {
 
 	@Override
 	public void updateEntity(UpdateUserRequest request, User user) {
-		// TODO Auto-generated method stub
-		throw new UnsupportedOperationException("Unimplemented method 'updateEntity'");
+		if (request == null || user == null) {
+			return;
+		}
+		if (request.username() != null) {
+			user.setUsername(request.username());
+		}
+		if (request.oldPassword() != null && request.newPassword() != null) {
+			if (!user.getPassword().equals(request.oldPassword())) {
+				throw new IllegalArgumentException("Ancien mot de passe incorrect");
+			}
+			user.setPassword(request.newPassword());
+		}
 	}
 
 }
