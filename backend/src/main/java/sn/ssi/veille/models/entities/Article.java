@@ -10,6 +10,7 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.index.TextIndexed;
+import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
@@ -50,6 +51,11 @@ public class Article {
      * Résumé de l'article (généré ou extrait).
      */
     private String resume;
+
+    /**
+     * Résumé généré par l'IA (sur demande).
+     */
+    private String aiSummary;
 
     /**
      * URL originale de l'article.
@@ -121,8 +127,8 @@ public class Article {
     private java.util.List<Double> vector;
 
     /**
-     * ID de l'histoire (Cluster) auquel l'article appartient.
+     * L'histoire (Cluster) auquel l'article appartient.
      */
-    @Indexed
-    private String storyId;
+    @DBRef
+    private Story story;
 }

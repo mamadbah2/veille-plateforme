@@ -21,9 +21,12 @@ import java.util.List;
 public class CategorieServiceImpl implements CategorieService {
 
     private final CategorieRepository categorieRepository;
+    private final sn.ssi.veille.models.repositories.StoryRepository storyRepository;
 
-    public CategorieServiceImpl(CategorieRepository categorieRepository) {
+    public CategorieServiceImpl(CategorieRepository categorieRepository,
+            sn.ssi.veille.models.repositories.StoryRepository storyRepository) {
         this.categorieRepository = categorieRepository;
+        this.storyRepository = storyRepository;
     }
 
     @Override
@@ -33,6 +36,7 @@ public class CategorieServiceImpl implements CategorieService {
                 .description(request.description())
                 .couleur(request.couleur())
                 .icone(request.icone())
+                // .imageUrl() handled separately or null
                 .build();
 
         Categorie saved = categorieRepository.save(categorie);
@@ -73,6 +77,8 @@ public class CategorieServiceImpl implements CategorieService {
             categorie.setCouleur(request.couleur());
         if (request.icone() != null)
             categorie.setIcone(request.icone());
+        // imageUrl update logic missing in request DTO for now, assumed handled by
+        // other means or default
 
         Categorie updated = categorieRepository.save(categorie);
         return toResponse(updated);
@@ -87,12 +93,19 @@ public class CategorieServiceImpl implements CategorieService {
     }
 
     private CategorieResponse toResponse(Categorie categorie) {
+        long count = 0;
+        if (categorie.getNomCategorie() != null) {
+            count = storyRepository.countByCategoriesContaining(categorie.getNomCategorie());
+        }
+
         return new CategorieResponse(
                 categorie.getId(),
                 categorie.getNomCategorie(),
                 categorie.getDescription(),
                 categorie.getCouleur(),
                 categorie.getIcone(),
+                categorie.getImageUrl(),
+                count,
                 categorie.getCreatedAt());
     }
 }

@@ -12,11 +12,14 @@ import java.time.LocalDateTime;
  */
 @Schema(description = "Informations d'une catégorie")
 public record CategorieResponse(
-        String id,
-        String nomCategorie,
-        String description,
-        String couleur,
-        String icone,
-        LocalDateTime createdAt
+                String id,
+                String nomCategorie,
+                String description,
+                String couleur,
+                String icone,
+                String imageUrl,
+                long storiesCount,
+                LocalDateTime createdAt
 
-) {}
+) {
+}

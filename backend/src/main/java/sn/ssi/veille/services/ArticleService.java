@@ -23,6 +23,9 @@ public interface ArticleService {
 
     PageResponse<ArticleSummaryResponse> getArticlesBySource(String sourceId, int page, int size);
 
+    PageResponse<ArticleSummaryResponse> getArticlesByGravite(sn.ssi.veille.models.entities.Gravite gravite, int page,
+            int size);
+
     PageResponse<ArticleSummaryResponse> getTrendingArticles(int page, int size);
 
     ArticleResponse updateArticle(String id, ArticleRequest request);

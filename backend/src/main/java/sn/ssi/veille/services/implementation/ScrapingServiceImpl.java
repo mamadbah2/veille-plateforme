@@ -46,6 +46,7 @@ public class ScrapingServiceImpl implements ScrapingService {
     private final CrossReferenceService crossReferenceService;
     private final sn.ssi.veille.models.repositories.CategorieRepository categorieRepository;
     private final sn.ssi.veille.services.ClusteringService clusteringService;
+    private final sn.ssi.veille.services.ContentExtractionService contentExtractionService;
 
     public ScrapingServiceImpl(SourceRepository sourceRepository,
             ArticleRepository articleRepository,
@@ -53,7 +54,8 @@ public class ScrapingServiceImpl implements ScrapingService {
             AIService aiService,
             CrossReferenceService crossReferenceService,
             sn.ssi.veille.models.repositories.CategorieRepository categorieRepository,
-            sn.ssi.veille.services.ClusteringService clusteringService) {
+            sn.ssi.veille.services.ClusteringService clusteringService,
+            sn.ssi.veille.services.ContentExtractionService contentExtractionService) {
         this.sourceRepository = sourceRepository;
         this.articleRepository = articleRepository;
         this.webClient = webClientBuilder.build();
@@ -61,6 +63,7 @@ public class ScrapingServiceImpl implements ScrapingService {
         this.crossReferenceService = crossReferenceService;
         this.categorieRepository = categorieRepository;
         this.clusteringService = clusteringService;
+        this.contentExtractionService = contentExtractionService;
     }
 
     // ... existing methods ...
@@ -78,6 +81,41 @@ public class ScrapingServiceImpl implements ScrapingService {
 
             // Vérifier si l'article existe déjà par URL
             if (!articleRepository.existsByUrlOrigine(article.getUrlOrigine())) {
+
+                // TENTATIVE D'EXTRACTION COMPLETE DU CONTENU
+                String rssDescription = article.getContenu(); // Garder le résumé RSS original
+                try {
+                    String fullContent = contentExtractionService.extractFullContent(article.getUrlOrigine()).join();
+                    if (fullContent != null && fullContent
+                            .length() > (article.getContenu() != null ? article.getContenu().length() : 0)) {
+                        String cleanText = sanitizeContent(fullContent);
+
+                        // AI Premium Cleaning (Fix encoding & boilerplate)
+                        if (aiService.isAvailable()) {
+                            try {
+                                log.debug("Nettoyage IA en cours pour {}...", article.getTitre());
+                                cleanText = aiService.cleanContent(cleanText).join();
+                            } catch (Exception e) {
+                                log.warn("Echec nettoyage IA (fallback regex): {}", e.getMessage());
+                            }
+                        }
+
+                        // Sécurité finale : ne jamais écraser avec du vide
+                        if (cleanText != null && !cleanText.isBlank()) {
+                            article.setContenu(cleanText);
+                        }
+                    }
+                } catch (Exception e) {
+                    log.warn("Echec extraction contenu pour {}: {}", article.getUrlOrigine(), e.getMessage());
+                }
+
+                // FALLBACK RSS : Si contenu toujours vide, garder le résumé RSS
+                if ((article.getContenu() == null || article.getContenu().isBlank())
+                        && rssDescription != null && !rssDescription.isBlank()) {
+                    article.setContenu(rssDescription);
+                    log.info("📝 Fallback RSS pour {} (résumé conservé)", article.getTitre());
+                }
+
                 Article saved = articleRepository.save(article);
                 newArticles.add(saved);
             }
@@ -146,6 +184,12 @@ public class ScrapingServiceImpl implements ScrapingService {
         int totalArticles = 0;
 
         for (Source source : activeSources) {
+            // Validation pré-scraping
+            if (source.getNomSource() == null || source.getMethodeCollecte() == null || source.getUrl() == null) {
+                log.warn("Source ignorée (Données invalides) : ID={}", source.getId());
+                continue;
+            }
+
             try {
                 List<Article> articles = scrapeSource(source.getId());
                 totalArticles += articles.size();
@@ -159,6 +203,17 @@ public class ScrapingServiceImpl implements ScrapingService {
                 sourceRepository.save(source);
 
                 log.info("Source {} : {} articles collectés", source.getNomSource(), articles.size());
+
+                // BEST PRACTICE: Pause aléatoire (2-5s) pour respecter les serveurs cibles
+                // (Politeness)
+                try {
+                    long delay = 2000 + (long) (Math.random() * 3000);
+                    log.debug("Pause de {} ms (Politeness)...", delay);
+                    Thread.sleep(delay);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                }
+
             } catch (Exception e) {
                 handleSourceError(source, e);
             }

@@ -9,7 +9,6 @@ import sn.ssi.veille.web.controllers.ArticleController;
 import sn.ssi.veille.web.dto.requests.ArticleRequest;
 import sn.ssi.veille.web.dto.requests.ArticleSearchCriteria;
 import sn.ssi.veille.web.dto.responses.*;
-import sn.ssi.veille.web.dto.responses.MessageResponse;
 
 /**
  * Implémentation du contrôleur Article.
@@ -23,10 +22,16 @@ public class ArticleControllerImpl implements ArticleController {
 
     private final ArticleServiceImpl articleService;
     private final sn.ssi.veille.services.AIService aiService;
+    private final sn.ssi.veille.services.ContentExtractionService contentExtractionService;
+    private final sn.ssi.veille.services.ScrapingService scrapingService;
 
-    public ArticleControllerImpl(ArticleServiceImpl articleService, sn.ssi.veille.services.AIService aiService) {
+    public ArticleControllerImpl(ArticleServiceImpl articleService, sn.ssi.veille.services.AIService aiService,
+            sn.ssi.veille.services.ContentExtractionService contentExtractionService,
+            sn.ssi.veille.services.ScrapingService scrapingService) {
         this.articleService = articleService;
         this.aiService = aiService;
+        this.contentExtractionService = contentExtractionService;
+        this.scrapingService = scrapingService;
     }
 
     @Override
@@ -69,8 +74,7 @@ public class ArticleControllerImpl implements ArticleController {
     @Override
     public ResponseEntity<PageResponse<ArticleSummaryResponse>> getArticlesByGravite(Gravite gravite, int page,
             int size) {
-        // TODO: Implémenter le filtre par gravité
-        return ResponseEntity.ok(articleService.getLatestArticles(page, size));
+        return ResponseEntity.ok(articleService.getArticlesByGravite(gravite, page, size));
     }
 
     @Override
@@ -101,9 +105,9 @@ public class ArticleControllerImpl implements ArticleController {
     }
 
     @Override
-    public ResponseEntity<MessageResponse> generateAISummary(String id, String apiKey) {
+    public ResponseEntity<sn.ssi.veille.web.dto.responses.MessageResponse> generateAISummary(String id, String apiKey) {
         String summary = articleService.generateAISummary(id, apiKey);
-        return ResponseEntity.ok(MessageResponse.success(summary));
+        return ResponseEntity.ok(sn.ssi.veille.web.dto.responses.MessageResponse.success(summary));
     }
 
     @Override
@@ -111,5 +115,17 @@ public class ArticleControllerImpl implements ArticleController {
         String text = payload.getOrDefault("text", "Test embedding");
         var vector = aiService.getEmbeddings(text).join();
         return ResponseEntity.ok(vector);
+    }
+
+    @Override
+    public ResponseEntity<String> testContentExtraction(String url) {
+        String content = contentExtractionService.extractFullContent(url).join();
+        return ResponseEntity.ok(content);
+    }
+
+    @Override
+    public ResponseEntity<Integer> syncAllSources() {
+        int count = scrapingService.scrapeAllSources();
+        return ResponseEntity.ok(count);
     }
 }

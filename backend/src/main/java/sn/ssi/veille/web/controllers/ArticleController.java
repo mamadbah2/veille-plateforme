@@ -80,4 +80,10 @@ public interface ArticleController {
         @GetMapping("/{id}/verify")
         ResponseEntity<sn.ssi.veille.models.entities.Article> verifyArticle(
                         @PathVariable String id);
+
+        @GetMapping("/test-extract")
+        ResponseEntity<String> testContentExtraction(@RequestParam String url);
+
+        @PostMapping("/sync")
+        ResponseEntity<Integer> syncAllSources();
 }

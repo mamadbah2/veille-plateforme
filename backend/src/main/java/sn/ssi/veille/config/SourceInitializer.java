@@ -166,7 +166,7 @@ public class SourceInitializer {
                                                         .sourceType(SourceType.OFFICIAL)
                                                         .categorieParDefaut(categories.get("CYBERSECURITY").getId())
                                                         .description("National Vulnerability Database (CVEs)")
-                                                        .trustScore(10).active(true).priorite(10).build(),
+                                                        .trustScore(10).active(false).priorite(10).build(),
                                         Source.builder().nomSource("CERT-FR Alertes")
                                                         .url("https://www.cert.ssi.gouv.fr/alerte/feed/")
                                                         .methodeCollecte(MethodeCollecte.RSS)
@@ -181,20 +181,22 @@ public class SourceInitializer {
                                                         .categorieParDefaut(categories.get("CYBERSECURITY").getId())
                                                         .description("Actualités cybersécurité et tech")
                                                         .trustScore(8).active(true).priorite(7).build(),
-                                        Source.builder().nomSource("The Hacker News")
-                                                        .url("https://thehackernews.com/feeds/posts/default")
+                                        // Remplacement de "The Hacker News" (Trop protégé) par une source fiable
+                                        // vérifiée
+                                        Source.builder().nomSource("Reddit Cybersecurity")
+                                                        .url("https://www.reddit.com/r/cybersecurity/.rss")
                                                         .methodeCollecte(MethodeCollecte.RSS)
-                                                        .sourceType(SourceType.MEDIA)
+                                                        .sourceType(SourceType.COMMUNITY)
                                                         .categorieParDefaut(categories.get("CYBERSECURITY").getId())
-                                                        .description("News cybersécurité")
-                                                        .trustScore(7).active(true).priorite(7).build(),
+                                                        .description("Communauté Reddit Cybersecurity (Validé Playwright)")
+                                                        .trustScore(7).active(true).priorite(8).build(),
                                         Source.builder().nomSource("Reddit Netsec")
                                                         .url("https://www.reddit.com/r/netsec/.rss")
                                                         .methodeCollecte(MethodeCollecte.RSS)
                                                         .sourceType(SourceType.COMMUNITY)
                                                         .categorieParDefaut(categories.get("CYBERSECURITY").getId())
                                                         .description("Communauté Reddit Network Security")
-                                                        .trustScore(6).active(true).priorite(5).build(),
+                                                        .trustScore(6).active(false).priorite(5).build(),
                                         Source.builder().nomSource("CISA Alerts")
                                                         .url("https://www.cisa.gov/cybersecurity-advisories/all.xml")
                                                         .methodeCollecte(MethodeCollecte.RSS)
@@ -215,13 +217,13 @@ public class SourceInitializer {
                                                         .sourceType(SourceType.BLOG)
                                                         .categorieParDefaut(categories.get("CYBERSECURITY").getId())
                                                         .description("Blog de Bruce Schneier")
-                                                        .trustScore(9).active(true).priorite(7).build(),
+                                                        .trustScore(9).active(false).priorite(7).build(),
                                         Source.builder().nomSource("Zataz").url("https://www.zataz.com/")
                                                         .methodeCollecte(MethodeCollecte.SCRAPING)
                                                         .sourceType(SourceType.BLOG)
                                                         .categorieParDefaut(categories.get("CYBERSECURITY").getId())
                                                         .description("Blog Zataz (Scraping HTML)")
-                                                        .selectorTitle("h2.post-title a").trustScore(6).active(true)
+                                                        .selectorTitle("h2.post-title a").trustScore(6).active(false)
                                                         .priorite(5).build(),
 
                                         // === TECHNOLOGY & BUSINESS ===
@@ -251,7 +253,7 @@ public class SourceInitializer {
                                                         .sourceType(SourceType.MEDIA)
                                                         .categorieParDefaut(categories.get("TECHNOLOGY").getId())
                                                         .description("Actualités technologiques")
-                                                        .trustScore(7).active(true).priorite(5).build());
+                                                        .trustScore(7).active(false).priorite(5).build());
 
                         int added = 0;
                         int updated = 0;
@@ -265,12 +267,13 @@ public class SourceInitializer {
                                         if (!existing.getCategorieParDefaut().equals(sourceDef.getCategorieParDefaut())
                                                         ||
                                                         !existing.getDescription().equals(sourceDef.getDescription()) ||
-                                                        existing.getTrustScore() != sourceDef.getTrustScore()) {
+                                                        existing.getTrustScore() != sourceDef.getTrustScore() ||
+                                                        existing.isActive() != sourceDef.isActive()) {
 
                                                 existing.setCategorieParDefaut(sourceDef.getCategorieParDefaut());
                                                 existing.setDescription(sourceDef.getDescription());
                                                 existing.setTrustScore(sourceDef.getTrustScore());
-                                                // Keep other fields like ID, active status preference etc.
+                                                existing.setActive(sourceDef.isActive());
 
                                                 sourceRepository.save(existing);
                                                 updated++;

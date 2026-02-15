@@ -54,6 +54,11 @@ public class Categorie {
     private String icone;
 
     /**
+     * URL de l'image de couverture (pour la carte Explorer).
+     */
+    private String imageUrl;
+
+    /**
      * Date de création.
      */
     @CreatedDate

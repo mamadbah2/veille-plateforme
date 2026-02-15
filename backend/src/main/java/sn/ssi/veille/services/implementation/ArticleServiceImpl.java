@@ -12,6 +12,7 @@ import sn.ssi.veille.models.entities.Source;
 import sn.ssi.veille.models.repositories.ArticleRepository;
 import sn.ssi.veille.models.repositories.CategorieRepository;
 import sn.ssi.veille.models.repositories.SourceRepository;
+import sn.ssi.veille.services.AIService;
 import sn.ssi.veille.services.ArticleService;
 import sn.ssi.veille.services.CrossReferenceService;
 import sn.ssi.veille.web.dto.requests.ArticleRequest;
@@ -35,15 +36,21 @@ public class ArticleServiceImpl implements ArticleService {
     private final SourceRepository sourceRepository;
     private final CategorieRepository categorieRepository;
     private final CrossReferenceService crossReferenceService;
+    private final AIService aiService;
+    private final sn.ssi.veille.services.ClusteringService clusteringService;
 
     public ArticleServiceImpl(ArticleRepository articleRepository,
             SourceRepository sourceRepository,
             CategorieRepository categorieRepository,
-            CrossReferenceService crossReferenceService) {
+            CrossReferenceService crossReferenceService,
+            AIService aiService,
+            sn.ssi.veille.services.ClusteringService clusteringService) {
         this.articleRepository = articleRepository;
         this.sourceRepository = sourceRepository;
         this.categorieRepository = categorieRepository;
         this.crossReferenceService = crossReferenceService;
+        this.aiService = aiService;
+        this.clusteringService = clusteringService;
     }
 
     @Override
@@ -71,6 +78,22 @@ public class ArticleServiceImpl implements ArticleService {
             // Log but don't fail creation
         }
 
+        // Trigger Clustering (Async)
+        try {
+            clusteringService.processClustering(saved);
+        } catch (Exception e) {
+            // Log but don't fail creation
+        }
+
+        // Trigger AI Enrichment (Categorization & Tags) - Async
+        try {
+            aiService.enrichArticle(saved).thenAccept(enriched -> {
+                articleRepository.save(enriched);
+            });
+        } catch (Exception e) {
+            // Log but don't fail creation
+        }
+
         return toFullResponse(saved);
     }
 
@@ -84,6 +107,36 @@ public class ArticleServiceImpl implements ArticleService {
         articleRepository.save(article);
 
         return toFullResponse(article);
+    }
+
+    // ... skipping other methods until generateAISummary ...
+
+    @Override
+    public String generateAISummary(String articleId, String apiKey) {
+        Article article = articleRepository.findById(articleId)
+                .orElseThrow(() -> new ArticleNotFoundException("Article non trouvé avec l'id: " + articleId));
+
+        // Return existing AI summary if available
+        if (article.getAiSummary() != null && !article.getAiSummary().isBlank()) {
+            return article.getAiSummary();
+        }
+
+        if (!aiService.isAvailable()) {
+            throw new RuntimeException("AI Service is not available");
+        }
+
+        try {
+            String summary = aiService.generateSummary(article.getContenu()).join();
+            if (summary != null && !summary.isBlank()) {
+                article.setAiSummary(summary);
+                articleRepository.save(article);
+                return summary;
+            } else {
+                return "Impossible de générer le résumé.";
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Erreur lors de la génération du résumé: " + e.getMessage());
+        }
     }
 
     @Override
@@ -101,12 +154,30 @@ public class ArticleServiceImpl implements ArticleService {
 
     @Override
     public PageResponse<ArticleSummaryResponse> searchArticles(ArticleSearchCriteria criteria) {
-        // TODO: Implémenter la recherche avancée avec criteria
         PageRequest pageRequest = PageRequest.of(
                 criteria.page() != null ? criteria.page() : 0,
                 criteria.size() != null ? criteria.size() : 20,
                 Sort.by(Sort.Direction.DESC, "datePublication"));
-        Page<Article> articlePage = articleRepository.findAll(pageRequest);
+
+        Page<Article> articlePage;
+
+        if (criteria.query() != null && !criteria.query().isBlank()) {
+            if (criteria.categorieId() != null && !criteria.categorieId().isBlank()) {
+                // Recherche Combinée : Mot-clé + Catégorie
+                articlePage = articleRepository.searchByKeywordAndCategory(
+                        criteria.query(), criteria.categorieId(), pageRequest);
+            } else {
+                // Recherche seule
+                articlePage = articleRepository.findByTitreContainingIgnoreCaseOrContenuContainingIgnoreCase(
+                        criteria.query(), criteria.query(), pageRequest);
+            }
+        } else if (criteria.categorieId() != null && !criteria.categorieId().isBlank()) {
+            // Filtre Catégorie seul
+            articlePage = articleRepository.findByCategorieId(criteria.categorieId(), pageRequest);
+        } else {
+            articlePage = articleRepository.findAll(pageRequest);
+        }
+
         return toPageResponse(articlePage);
     }
 
@@ -125,8 +196,19 @@ public class ArticleServiceImpl implements ArticleService {
     }
 
     @Override
+    public PageResponse<ArticleSummaryResponse> getArticlesByGravite(Gravite gravite, int page, int size) {
+        PageRequest pageRequest = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "datePublication"));
+        Page<Article> articlePage = articleRepository.findByGravite(gravite, pageRequest);
+        return toPageResponse(articlePage);
+    }
+
+    @Override
     public PageResponse<ArticleSummaryResponse> getTrendingArticles(int page, int size) {
-        PageRequest pageRequest = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "nombreVues"));
+        // Tri Hybride : 1. Gravité (Critique d'abord), 2. Récence, 3. Vues
+        PageRequest pageRequest = PageRequest.of(page, size, Sort.by(
+                Sort.Order.desc("gravite"),
+                Sort.Order.desc("datePublication"),
+                Sort.Order.desc("nombreVues")));
         Page<Article> articlePage = articleRepository.findAll(pageRequest);
         return toPageResponse(articlePage);
     }
@@ -194,12 +276,6 @@ public class ArticleServiceImpl implements ArticleService {
     }
 
     @Override
-    public String generateAISummary(String articleId, String apiKey) {
-        // TODO: Implémenter la génération IA
-        return "Fonctionnalité IA non disponible pour le moment.";
-    }
-
-    @Override
     public boolean articleExists(String urlOrigine, String sourceId) {
         return articleRepository.existsByUrlOrigineAndSourceId(urlOrigine, sourceId);
     }
@@ -258,8 +334,14 @@ public class ArticleServiceImpl implements ArticleService {
             Categorie categorie = categorieRepository.findById(article.getCategorieId()).orElse(null);
             if (categorie != null) {
                 categorieResponse = new CategorieResponse(
-                        categorie.getId(), categorie.getNomCategorie(), categorie.getDescription(),
-                        categorie.getCouleur(), categorie.getIcone(), categorie.getCreatedAt());
+                        categorie.getId(),
+                        categorie.getNomCategorie(),
+                        categorie.getDescription(),
+                        categorie.getCouleur(),
+                        categorie.getIcone(),
+                        categorie.getImageUrl(), // Image
+                        0, // Count (ArticleService doesn't compute story count)
+                        categorie.getCreatedAt());
             }
         }
 

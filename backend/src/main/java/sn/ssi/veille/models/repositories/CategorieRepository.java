@@ -16,4 +16,7 @@ import java.util.Optional;
 public interface CategorieRepository extends MongoRepository<Categorie, String> {
 
     Optional<Categorie> findByNomCategorie(String nomCategorie);
+
+    // Pour la recherche Spotlight
+    java.util.List<Categorie> findByNomCategorieContainingIgnoreCase(String nomCategorie);
 }

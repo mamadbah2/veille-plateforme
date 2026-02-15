@@ -111,6 +111,13 @@
 			<version>1.49.0</version>
 		</dependency>
 
+		<!-- Jsoup (HTML Parsing & Cleaning) -->
+		<dependency>
+			<groupId>org.jsoup</groupId>
+			<artifactId>jsoup</artifactId>
+			<version>1.18.1</version>
+		</dependency>
+
 		<!-- Test -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
