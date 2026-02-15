@@ -2,9 +2,8 @@ package sn.ssi.veille.services.implementation;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.MediaType;
-import org.springframework.http.codec.json.Jackson2JsonDecoder;
-import org.springframework.http.codec.json.Jackson2JsonEncoder;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.ExchangeStrategies;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -15,7 +14,6 @@ import sn.ssi.veille.models.entities.Gravite;
 import sn.ssi.veille.models.repositories.CategorieRepository;
 import sn.ssi.veille.services.AIService;
 
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -35,16 +33,9 @@ public class LMStudioService implements AIService {
         reactor.netty.http.client.HttpClient httpClient = reactor.netty.http.client.HttpClient.create()
                 .responseTimeout(java.time.Duration.ofMillis(aiConfig.getTimeout()));
 
-        // Force UTF-8 pour toutes les réponses JSON (fix définitif mojibake)
-        MediaType jsonUtf8 = new MediaType("application", "json", StandardCharsets.UTF_8);
-        ObjectMapper mapper = new ObjectMapper();
-
         ExchangeStrategies strategies = ExchangeStrategies.builder()
                 .codecs(configurer -> {
-                    configurer.defaultCodecs().jackson2JsonEncoder(
-                            new Jackson2JsonEncoder(mapper, jsonUtf8));
-                    configurer.defaultCodecs().jackson2JsonDecoder(
-                            new Jackson2JsonDecoder(mapper, jsonUtf8));
+                    // Augmentation de la taille max pour les réponses IA volumineuses
                     configurer.defaultCodecs().maxInMemorySize(16 * 1024 * 1024); // 16MB
                 })
                 .build();
@@ -57,7 +48,7 @@ public class LMStudioService implements AIService {
 
         this.aiConfig = aiConfig;
         this.categorieRepository = categorieRepository;
-        this.objectMapper = mapper;
+        this.objectMapper = new ObjectMapper(); // Re-instantiation simple
     }
 
     @Override

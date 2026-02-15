@@ -1,99 +1,75 @@
-# Synthèse Finale de la Branche Feature/Scraping
+# Synthèse Finale Backend - Veille Plateforme (Horus)
 
-**Date** : 09 Février 2026
+**Date** : 15 Février 2026
 **Responsable** : Assistant AI
-**Branche** : `feature/scraping-sources`
+**Statut** : **BACKEND COMPLET & VALIDÉ** ✅
 
 ---
 
 ## 🚀 1. Ce qui a été construit
-Cette branche dote la plateforme de veille cybersécurité de ses capacités fondamentales : **Gérer des sources d'information** et **Collecter des articles** automatiquement.
+Nous avons transformé un simple scraper en une **Plateforme de Veille Intelligente**. Le backend est désormais un moteur puissant capable de digérer, analyser et servir l'information de cybersécurité.
 
 ### Composants Majeurs :
-1.  **Gestion des Sources (CRUD)** :
-    *   API complète pour Créer, Lire, Mettre à jour et Supprimer des sources.
-    *   Système de "Soft Delete" (Activation/Désactivation).
-    *   Paramétrage fin : Fréquence de scraping, Trust Score, Priorité, Headers HTTP custom.
-2.  **Moteur de Scraping (Multi-protocole)** :
-    *   **RSS** : Compatible avec la majorité des flux (XML standard).
-    *   **API NIST** : Connecteur spécifique pour la National Vulnerability Database (CVEs).
-    *   **API Hacker News** : Connecteur pour récupérer les "Top Stories" tech.
-    *   **Architecture Extensible** : Prêt pour ajouter Playwright/Selenium plus tard.
-3.  **Initialisation Automatique** :
-    *   Au premier démarrage, **11 sources de référence** sont injectées automatiquement (CERT-FR, Reddit Netsec, CISA, etc.).
-    *   Garantit que l'environnement de dev n'est jamais vide.
+
+#### A. Le Cerveau (AI & Intelligence) 🧠
+*   **Enrichissement Automatique** : Chaque article est analysé par l'IA pour lui assigner une **Catégorie** (Sec, Dev, Ops...) et des **Tags** précis.
+*   **Clustering (Stories)** : Regroupement intelligent des articles traitant du même sujet pour éviter les doublons (Algo Hybride : Vecteurs + Temporel).
+*   **Synthèse** : Génération de résumés concis et de titres accrocheurs pour les Stories.
+*   **Nettoyage** : "Cleaning" du contenu HTML pour ne garder que le texte pertinent (Markdown).
+
+#### B. Le Moteur de Recherche (Spotlight) 🔍
+*   **Smart Search** : Recherche hybride combinant mots-clés (Titre/Contenu) et filtres (Catégorie).
+*   **Spotlight UI** : Endpoint dédié pour la modale de recherche (Suggestions de catégories, Tags dynamiques).
+*   **Algorithme de Tendance Stratégique** :
+    1.  **Gravité** (Les alertes CRITIQUES passent en priorité 🚨).
+    2.  **Récence** (L'info fraîche ensuite).
+    3.  **Popularité** (Le nombre de vues pour départager).
+
+#### C. L'Infrastructure de Collecte (Scraping) 🕸️
+*   **Multi-Sources** : RSS, API NIST, HackerNews.
+*   **Robustesse** : Gestion des erreurs, Backoff, Rotation d'User-Agents.
+*   **Initialisation** : Seeding automatique de 11 sources de référence (CERT-FR, CISA, etc.).
 
 ---
 
-## 🛠️ 2. Architecture Technique
+## 🛠️ 2. Qualité Technique & Architecture
 
-### Diagramme de Classe Simplifié
-```mermaid
-classDiagram
-    class Source {
-        +String url
-        +String nom
-        +Enum methodeCollecte
-        +Boolean active
-        +int trustScore
-    }
-    class Article {
-        +String titre
-        +String contenu
-        +DateTime datePublication
-        +Enum gravite
-    }
-    class ScrapingService {
-        +scrapeAllSources()
-        +scrapeSource(id)
-    }
-    class SourceService {
-        +create()
-        +activate()
-        +update()
-    }
-    
-    Source "1" -- "*" Article : generate
-    ScrapingService ..> Source : reads
-    ScrapingService ..> Article : creates
-```
+### Stack Moderne
+*   **Java 21** : Utilisation des `record` pour des DTOs immuables et performants.
+*   **Spring Boot 3+** : Architecture REST propre (Controller -> Service -> Repository).
+*   **MongoDB** : Schéma flexible pour stocker les articles et les clusters.
+*   **WebClient (Reactive)** : Appels HTTP non-bloquants vers les IA et les sources.
 
-### Choix Techniques & Sécurité
-*   **Spring WebFlux (WebClient)** : Pour des requêtes HTTP non-bloquantes et performantes.
-*   **Rome Tools** : Bibliothèque robuste pour le parsing RSS/Atom.
-*   **Global Exception Handler** : Centralisation des erreurs API (fini les stacktraces 500).
-*   **Security Hardening** :
-    *   Sanitization HTML (protection XSS).
-    *   Timeouts stricts (Connect: 5s, Read: 10s).
-    *   User-Agent rotatif/fixe pour éviter le bannissement.
+### Optimisations Récentes (Audit Final)
+*   ✅ **Filtres Avancés** : Ajout du filtrage par Gravité et par Catégorie dans la recherche.
+*   ✅ **Navigation** : Endpoints dédiés pour la navigation par Catégorie et Source.
+*   ✅ **Sécurité & Performance** : Pagination (`PageResponse`) sur tous les endpoints de liste.
+*   ✅ **Code Clean-up** : Suppression des méthodes dépréciées (XmlReader, Jackson Codecs) et sécurisation des listes mutables (StoryService).
 
 ---
 
-## ✅ 3. Vérification & Tests
+## 📊 3. État des APIs
+Toutes les routes nécessaires au Frontend sont prêtes :
 
-### Tests Effectués
-| Composant | Test | Résultat |
+| Fonctionnalité | Endpoint | Statut |
 | :--- | :--- | :---: |
-| **API Sources** | Création d'une source (NIST) | ✅ OK |
-| **Scraping RSS** | Collecte du flux CERT-FR | ✅ OK (Articles en base) |
-| **Scraping API** | Collecte des CVEs NIST | ✅ OK (Parsing JSON) |
-| **Robustesse** | Simulation de coupure réseau | ✅ OK (Backoff activé) |
-| **Start-up** | Démarrage à froid (Base vide) | ✅ OK (Seeding 11 sources) |
-
-### État du Code
-Le code a subi un **Audit complet** (voir `AUDIT_REPORT.md`).
-*   **Transactions** : OK (`@Transactional` sur les services).
-*   **Contrôleurs** : OK (Implémentations REST propres).
-*   **Mines** : Aucune (Pas de secrets hardcodés, pas de boucles infinies).
+| **Articles** | `GET /api/v1/articles` | ✅ |
+| **Recherche** | `POST /api/v1/articles/search` | ✅ (Smart) |
+| **Spotlight** | `GET /api/v1/search/spotlight` | ✅ |
+| **Tendances** | `GET /api/v1/articles/trending` | ✅ (Strategic) |
+| **Gravité** | `GET /api/v1/articles/gravite/{level}` | ✅ |
+| **Catégories** | `GET /api/v1/articles/categorie/{id}` | ✅ |
+| **Stories** | `GET /api/v1/stories` | ✅ |
 
 ---
 
-## 🔮 4. Prochaines Étapes
-La base est posée. Le système "voit" et "entend" le web cybersécurité.
+## 🔮 4. Et maintenant ? (Frontend)
+Le Backend est "Feature Complete". Il attend simplement d'être consommé par une interface utilisateur (Next.js / React).
 
-1.  **Intelligence** : Brancher un LLM (via LM Studio) pour trier ce flux d'infos.
-2.  **Interface** : Construire le Frontend (React/Vue) pour afficher les alertes.
-3.  **Notifications** : Alerter l'utilisateur en temps réel (WebSockets/Mail).
+**Prochaine étape** : Intégration Frontend 🎨
+1.  Créer les pages (Home, Search, Detail).
+2.  Brancher les appels API.
+3.  Afficher les Alertes Critiques en rouge.
 
 ---
-*Ce document valide la fin de la phase de développement "Collecte & Sources".*
+*Ce document valide la fin de la phase de développement Backend.*

@@ -4,13 +4,12 @@ import sn.ssi.veille.models.entities.Article;
 import sn.ssi.veille.models.entities.Story;
 
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 
 public interface StoryService {
 
     /**
      * Crée une nouvelle Story à partir d'un groupe d'articles (Cluster).
-     * Déclenche la synthèse IA asynchrone.
+     * Initialise la story en mode DRAFT.
      */
     Story createStoryFromCluster(List<Article> articles);
 

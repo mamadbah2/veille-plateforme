@@ -1,6 +1,5 @@
 package sn.ssi.veille.web.dto.requests;
 
-import io.swagger.v3.oas.annotations.media.Schema;
 import sn.ssi.veille.models.entities.Gravite;
 
 import java.time.LocalDateTime;
@@ -13,16 +12,16 @@ import java.time.LocalDateTime;
  */
 
 public record ArticleSearchCriteria(
-        String query,
-        String categorieId,
-        String sourceId,
-        Gravite graviteMin,
-        LocalDateTime dateDebut,
-        LocalDateTime dateFin,
-        String[] tags,
-        String auteur,
-        Integer page,
-        Integer size,
-        String sortBy,
-        String sortDirection
-) {}
+                String query,
+                String categorieId,
+                String sourceId,
+                Gravite graviteMin,
+                LocalDateTime dateDebut,
+                LocalDateTime dateFin,
+                String[] tags,
+                String auteur,
+                Integer page,
+                Integer size,
+                String sortBy,
+                String sortDirection) {
+}

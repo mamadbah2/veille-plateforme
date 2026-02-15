@@ -277,7 +277,9 @@ public class ScrapingServiceImpl implements ScrapingService {
             conn.setRequestProperty("User-Agent", "VeillePlateforme/1.0");
 
             SyndFeedInput input = new SyndFeedInput();
-            SyndFeed feed = input.build(new XmlReader(conn));
+            // Utilisation d'InputStream pour éviter le constructeur déprécié
+            // XmlReader(URLConnection)
+            SyndFeed feed = input.build(new XmlReader(conn.getInputStream()));
 
             int count = 0;
             for (SyndEntry entry : feed.getEntries()) {

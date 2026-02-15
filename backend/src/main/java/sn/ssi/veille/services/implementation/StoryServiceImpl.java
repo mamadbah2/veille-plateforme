@@ -32,7 +32,7 @@ public class StoryServiceImpl implements StoryService {
         // Création initiale de la Story
         Story story = Story.builder()
                 .etat(Story.EtatStory.DRAFT)
-                .articles(articles)
+                .articles(new java.util.ArrayList<>(articles)) // Copie mutable
                 .categories(new HashSet<>())
                 .dateCreation(LocalDateTime.now())
                 .dateModification(LocalDateTime.now())
@@ -70,7 +70,7 @@ public class StoryServiceImpl implements StoryService {
 
         // Ajouter l'article à la story
         if (story.getArticles() == null) {
-            story.setArticles(List.of(article));
+            story.setArticles(new java.util.ArrayList<>(List.of(article)));
         } else {
             story.getArticles().add(article);
         }
