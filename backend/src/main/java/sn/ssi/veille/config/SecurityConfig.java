@@ -39,6 +39,7 @@ public class SecurityConfig {
                                 "/api/login",
                                 "/api/register"
                         ).permitAll()
+                        .requestMatchers("/api/v1/auth/**", "/v3/api-docs/**", "/swagger-ui/**").permitAll()
                         .anyRequest().permitAll()
                 )
                 .oauth2Login(oauth2 -> oauth2
