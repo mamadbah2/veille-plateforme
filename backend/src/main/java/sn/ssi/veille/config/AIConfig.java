@@ -5,11 +5,17 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-@ConfigurationProperties(prefix = "ai.lmstudio")
+@ConfigurationProperties(prefix = "ai.provider")
 @Data
 public class AIConfig {
+    /**
+     * Type of provider: "openai" (default), "anthropic", "gemini", "lmstudio"
+     */
+    private String type = "openai";
+
     private String url;
+    private String apiKey;
     private String model;
     private String embeddingModel;
-    private Long timeout;
+    private Long timeout = 60000L;
 }

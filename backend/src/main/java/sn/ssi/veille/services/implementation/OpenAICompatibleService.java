@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.ExchangeStrategies;
 import org.springframework.web.reactive.function.client.WebClient;
 import sn.ssi.veille.config.AIConfig;
+import sn.ssi.veille.config.PromptConfig;
 import sn.ssi.veille.models.entities.Article;
 import sn.ssi.veille.models.entities.Categorie;
 import sn.ssi.veille.models.entities.Gravite;
@@ -20,14 +21,15 @@ import java.util.concurrent.CompletableFuture;
 
 @Service
 @Slf4j
-public class LMStudioService implements AIService {
+public class OpenAICompatibleService implements AIService {
 
     private final WebClient webClient;
     private final AIConfig aiConfig;
+    private final PromptConfig promptConfig;
     private final CategorieRepository categorieRepository;
     private final ObjectMapper objectMapper;
 
-    public LMStudioService(WebClient.Builder webClientBuilder, AIConfig aiConfig,
+    public OpenAICompatibleService(WebClient.Builder webClientBuilder, AIConfig aiConfig, PromptConfig promptConfig,
             CategorieRepository categorieRepository) {
 
         reactor.netty.http.client.HttpClient httpClient = reactor.netty.http.client.HttpClient.create()
@@ -42,19 +44,21 @@ public class LMStudioService implements AIService {
 
         this.webClient = webClientBuilder
                 .baseUrl(aiConfig.getUrl())
+                .defaultHeader("Authorization", "Bearer " + aiConfig.getApiKey())
                 .clientConnector(new org.springframework.http.client.reactive.ReactorClientHttpConnector(httpClient))
                 .exchangeStrategies(strategies)
                 .build();
 
         this.aiConfig = aiConfig;
+        this.promptConfig = promptConfig;
         this.categorieRepository = categorieRepository;
-        this.objectMapper = new ObjectMapper(); // Re-instantiation simple
+        this.objectMapper = new ObjectMapper();
     }
 
     @Override
     public boolean isAvailable() {
         try {
-            // Real ping to check if LM Studio is up and responding
+            // Real ping to check if Provider is up
             return webClient.get()
                     .uri("/v1/models")
                     .retrieve()
@@ -63,7 +67,7 @@ public class LMStudioService implements AIService {
                     .blockOptional(java.time.Duration.ofSeconds(2))
                     .orElse(false);
         } catch (Exception e) {
-            log.debug("LM Studio n'est pas accessible : {}", e.getMessage());
+            log.debug("AI Provider n'est pas accessible : {}", e.getMessage());
             return false;
         }
     }
@@ -75,33 +79,7 @@ public class LMStudioService implements AIService {
             return CompletableFuture.completedFuture(article);
         }
 
-        // Universal Prompt (IT Watch / Veille Informatique)
-        // NOTE: PAS de résumé ici. Le résumé est généré à la demande (lazy-load).
-        String systemPrompt = """
-                You are an expert IT Watch analyst (Veille Informatique).
-                Analyze the provided article and categorize it.
-
-                RESPONSE FORMAT MUST BE CLEAN JSON ONLY.
-                Strict Schema:
-                {
-                  "gravity": "Integer 1-5 (5=Critical/Breaking Change, 1=Info/Release)",
-                  "category": "One of [PROGRAMMING, DATA_SCIENCE, CYBERSECURITY, DEVOPS, TECHNOLOGY]",
-                  "tags": ["tag1", "tag2", "tag3", "tag4", "tag5"]
-                }
-
-                GUIDELINES FOR CLASSIFICATION:
-                1. PROGRAMMING: Software Engineering, Languages (Java, Python, Rust...), Web, Mobile, Architecture.
-                   - Tags: Software Architecture, Clean Code, Web Development, Mobile, Java, Python, JavaScript, Rust, Go, Algorithms
-                2. DATA_SCIENCE: AI, Machine Learning, Deep Learning, Big Data.
-                   - Tags: Artificial Intelligence, Machine Learning, Deep Learning, LLMs, NLP, Computer Vision, Data Engineering, Big Data
-                3. CYBERSECURITY: Security, Hacks, Vulnerabilities, Crypto.
-                   - Tags: Vulnerability, Malware, Ransomware, Network Security, Cryptography, Hacking, Privacy, OSINT, AppSec
-                4. DEVOPS: Cloud, Infrastructure, CI/CD, Containers.
-                   - Tags: Cloud Computing, AWS, Azure, Google Cloud, Kubernetes, Docker, CI/CD, Linux, SRE
-                5. TECHNOLOGY: General Tech, Business, Startups, Hardware.
-                   - Tags: Startup, Big Tech, Hardware, Gadgets, Innovation, Tech Policy, Apple, Microsoft, Google
-                """;
-
+        String systemPrompt = promptConfig.getEnrichment().getSystem();
         String prompt = buildPrompt(article);
 
         return webClient.post()
@@ -111,7 +89,7 @@ public class LMStudioService implements AIService {
                         "messages", List.of(
                                 Map.of("role", "system", "content", systemPrompt),
                                 Map.of("role", "user", "content", prompt)),
-                        "temperature", 0.1, // Cryogenic temperature for strict classification
+                        "temperature", 0.1,
                         "max_tokens", 2000))
                 .retrieve()
                 .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {
@@ -130,9 +108,7 @@ public class LMStudioService implements AIService {
                 Content: %s
                 """, article.getTitre(),
                 article.getContenu() != null
-                        ? article.getContenu().substring(0, Math.min(article.getContenu().length(), 1500)) // More
-                                                                                                           // context
-                                                                                                           // allowed
+                        ? article.getContenu().substring(0, Math.min(article.getContenu().length(), 1500))
                         : "");
     }
 
@@ -163,7 +139,7 @@ public class LMStudioService implements AIService {
 
             AIResult result = objectMapper.readValue(content, AIResult.class);
 
-            // Mapping des résultats (PAS de résumé — lazy-load à la demande)
+            // Mapping des résultats
             article.setTags(result.tags);
             article.setGravite(mapGravity(result.gravity));
 
@@ -171,7 +147,7 @@ public class LMStudioService implements AIService {
             if (result.category != null) {
                 String catName = result.category.trim();
                 Categorie cat = categorieRepository.findByNomCategorie(catName)
-                        .orElseGet(() -> createCategory(catName)); // Création dynamique ou fallback
+                        .orElseGet(() -> createCategory(catName));
                 article.setCategorieId(cat.getId());
             }
 
@@ -179,7 +155,6 @@ public class LMStudioService implements AIService {
 
         } catch (Exception e) {
             log.error("Erreur de parsing IA pour l'article '{}': {}", article.getTitre(), e.getMessage());
-            // On retourne l'article tel quel en cas d'erreur de parsing
         }
         return article;
     }
@@ -189,12 +164,10 @@ public class LMStudioService implements AIService {
     }
 
     private Categorie createCategory(String name) {
-        // En vrai projet, on éviterait la création sauvage, mais pour le prototype
-        // c'est utile
         return categorieRepository.save(Categorie.builder()
                 .nomCategorie(name)
                 .description("Catégorie générée par IA")
-                .couleur("#808080") // Gris par défaut
+                .couleur("#808080")
                 .createdAt(java.time.LocalDateTime.now())
                 .updatedAt(java.time.LocalDateTime.now())
                 .build());
@@ -207,7 +180,7 @@ public class LMStudioService implements AIService {
         }
 
         return webClient.post()
-                .uri("/v1/embeddings") // Corrected endpoint for standard OpenAI compatibility
+                .uri("/v1/embeddings")
                 .bodyValue(Map.of(
                         "model",
                         aiConfig.getEmbeddingModel() != null ? aiConfig.getEmbeddingModel() : aiConfig.getModel(),
@@ -230,7 +203,6 @@ public class LMStudioService implements AIService {
         try {
             List<Map<String, Object>> data = (List<Map<String, Object>>) response.get("data");
             if (data != null && !data.isEmpty()) {
-                // OpenAI format: data[0].embedding
                 Object embeddingObj = data.get(0).get("embedding");
                 if (embeddingObj instanceof List) {
                     return ((List<?>) embeddingObj).stream()
@@ -250,18 +222,7 @@ public class LMStudioService implements AIService {
             return CompletableFuture.completedFuture(rawText);
         }
 
-        // Prompt optimisé pour le "Nettoyage Premium"
-        String systemPrompt = """
-                You are an expert Text Editor and Data Cleaner.
-                Your task is to REPAIR and FORMAT the following web scraped text.
-
-                STRICT RULES:
-                1. FIX ENCODING: Correct any mojibake or encoding errors (e.g., "Ã©" -> "é", "â€™" -> "'").
-                2. REMOVE BOILERPLATE: Delete menus, ads, "Read more", "Subscribe", headers, footers.
-                3. FORMATTING: Convert the output to clean MARKDOWN (Use # for titles, ** for bold, - for lists).
-                4. LANGUAGE: Preserve the original language of the article.
-                5. OUTPUT: Return ONLY the cleaned content. No "Here is the cleaned text" preamble.
-                """;
+        String systemPrompt = promptConfig.getCleaning().getSystem();
 
         return webClient.post()
                 .uri("/v1/chat/completions")
@@ -270,22 +231,20 @@ public class LMStudioService implements AIService {
                         "messages", List.of(
                                 Map.of("role", "system", "content", systemPrompt),
                                 Map.of("role", "user", "content",
-                                        rawText.substring(0, Math.min(rawText.length(), 6000))) // Limit context
-                        ),
-                        "temperature", 0.1, // Low temp for fidelity
+                                        rawText.substring(0, Math.min(rawText.length(), 6000)))),
+                        "temperature", 0.1,
                         "max_tokens", 4000))
                 .retrieve()
                 .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {
                 })
                 .map(response -> {
                     String cleaned = extractContent(response);
-                    // Si le parsing échoue ou retourne vide, on garde le texte brut
                     return (cleaned != null && !cleaned.isBlank()) ? cleaned : rawText;
                 })
                 .toFuture()
                 .exceptionally(ex -> {
                     log.error("AI Cleaning Failed: {}", ex.getMessage());
-                    return rawText; // Fallback to raw text
+                    return rawText;
                 });
     }
 
@@ -295,18 +254,7 @@ public class LMStudioService implements AIService {
             return CompletableFuture.completedFuture(null);
         }
 
-        String systemPrompt = """
-                Tu es un journaliste tech expert.
-                Génère un RÉSUMÉ CONCIS (3-5 phrases) de l'article ci-dessous.
-
-                RÈGLES STRICTES :
-                1. LANGUE : Français
-                2. FORMAT : 3-5 phrases maximum, texte brut (pas de Markdown)
-                3. CONTENU : Les faits clés, l'impact, et les acteurs principaux
-                4. NE PAS répéter le titre
-                5. NE PAS commencer par "Cet article..." ou "L'article..."
-                6. Retourne UNIQUEMENT le résumé, rien d'autre
-                """;
+        String systemPrompt = promptConfig.getSummary().getSystem();
 
         return webClient.post()
                 .uri("/v1/chat/completions")
@@ -360,22 +308,7 @@ public class LMStudioService implements AIService {
                     .append("Summary: ").append(art.getResume()).append("\n\n");
         }
 
-        String systemPrompt = """
-                Tu es un Rédacteur en Chef d'un média technologique de premier plan (type TechCrunch ou Wired).
-                Ta mission : Synthétiser plusieurs sources d'informations sur un même événement en une seule Story cohérente.
-
-                INSTRUCTIONS :
-                1. Analyse les articles sources fournis.
-                2. Détermine le fait majeur commun.
-                3. Rédige une synthèse originale en français.
-                4. FORMAT DE SORTIE : JSON UNIQUEMENT.
-
-                SCHEMA JSON STRICT :
-                {
-                  "titre": "Titre percutant et informatif (max 100 chars)",
-                  "resume": "ARTICLE COMPLET et DÉTAILLÉ (500-800 mots). Ne fais pas un simple résumé. Rédige un véritable article de fond qui combine tous les faits, détails techniques, et contextes des sources fournies. Structure avec des paragraphes clairs. Pas de Markdown."
-                }
-                """;
+        String systemPrompt = promptConfig.getClustering().getSystem();
 
         return webClient.post()
                 .uri("/v1/chat/completions")
@@ -417,7 +350,6 @@ public class LMStudioService implements AIService {
         return content.trim();
     }
 
-    // DTO interne pour le parsing
     private static class AIResult {
         public String category;
         public int gravity;

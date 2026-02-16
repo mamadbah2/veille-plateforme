@@ -5,7 +5,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -22,12 +21,13 @@ import org.springframework.web.reactive.function.client.WebClient;
 
 import reactor.core.publisher.Mono;
 import sn.ssi.veille.config.AIConfig;
+import sn.ssi.veille.config.PromptConfig;
 import sn.ssi.veille.models.entities.Article;
 import sn.ssi.veille.models.repositories.CategorieRepository;
-import sn.ssi.veille.services.implementation.LMStudioService;
+import sn.ssi.veille.services.implementation.OpenAICompatibleService;
 
 @ExtendWith(MockitoExtension.class)
-class LMStudioServiceTest {
+class OpenAICompatibleServiceTest {
 
     @Mock
     private WebClient.Builder webClientBuilder;
@@ -46,18 +46,20 @@ class LMStudioServiceTest {
     @Mock
     private AIConfig aiConfig;
     @Mock
+    private PromptConfig promptConfig;
+    @Mock
     private CategorieRepository categorieRepository;
 
-    private LMStudioService lmStudioService;
+    private OpenAICompatibleService aiService;
 
     @BeforeEach
     @SuppressWarnings("unchecked")
     void setUp() {
         // Setup WebClient Builder mock chain for constructor
-        // We use lenient() because some tests might not trigger all constructor calls
-        // if we were doing partial mocks,
-        // but here we are instantiating the service which CALLS the constructor.
         when(webClientBuilder.baseUrl(anyString())).thenReturn(webClientBuilder);
+        when(webClientBuilder.defaultHeader(anyString(), anyString())).thenReturn(webClientBuilder); // Added for
+                                                                                                     // Authorizaton
+                                                                                                     // header
         when(webClientBuilder.clientConnector(any())).thenReturn(webClientBuilder);
         when(webClientBuilder.exchangeStrategies(any(ExchangeStrategies.class))).thenReturn(webClientBuilder);
         when(webClientBuilder.build()).thenReturn(webClient);
@@ -66,8 +68,26 @@ class LMStudioServiceTest {
         lenient().when(aiConfig.getUrl()).thenReturn("http://localhost:1234");
         lenient().when(aiConfig.getTimeout()).thenReturn(1000L);
         lenient().when(aiConfig.getModel()).thenReturn("test-model");
+        lenient().when(aiConfig.getApiKey()).thenReturn("test-key");
 
-        lmStudioService = new LMStudioService(webClientBuilder, aiConfig, categorieRepository);
+        // Mock Prompts
+        PromptConfig.Enrichment enrichment = new PromptConfig.Enrichment();
+        enrichment.setSystem("Test System");
+        lenient().when(promptConfig.getEnrichment()).thenReturn(enrichment);
+
+        PromptConfig.Cleaning cleaning = new PromptConfig.Cleaning();
+        cleaning.setSystem("Test System");
+        lenient().when(promptConfig.getCleaning()).thenReturn(cleaning);
+
+        PromptConfig.Summary summary = new PromptConfig.Summary();
+        summary.setSystem("Test System");
+        lenient().when(promptConfig.getSummary()).thenReturn(summary);
+
+        PromptConfig.Clustering clustering = new PromptConfig.Clustering();
+        clustering.setSystem("Test System");
+        lenient().when(promptConfig.getClustering()).thenReturn(clustering);
+
+        aiService = new OpenAICompatibleService(webClientBuilder, aiConfig, promptConfig, categorieRepository);
     }
 
     @Test
@@ -81,7 +101,7 @@ class LMStudioServiceTest {
         when(responseSpec.toBodilessEntity()).thenReturn(Mono.just(ResponseEntity.ok().build()));
 
         // When
-        boolean result = lmStudioService.isAvailable();
+        boolean result = aiService.isAvailable();
 
         // Then
         assertThat(result).isTrue();
@@ -98,7 +118,7 @@ class LMStudioServiceTest {
         when(responseSpec.toBodilessEntity()).thenReturn(Mono.error(new RuntimeException("Down")));
 
         // When
-        boolean result = lmStudioService.isAvailable();
+        boolean result = aiService.isAvailable();
 
         // Then
         assertThat(result).isFalse();
@@ -114,11 +134,11 @@ class LMStudioServiceTest {
         when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
         when(responseSpec.toBodilessEntity()).thenReturn(Mono.error(new RuntimeException("Offline")));
 
-        Article article = new Article();
-        article.setTitre("Test");
+        Article article = Article.builder().titre("Test").build();
 
         // When
-        Article result = lmStudioService.enrichArticle(article).join();
+        CompletableFuture<Article> future = aiService.enrichArticle(article);
+        Article result = future.join();
 
         // Then
         assertThat(result).isEqualTo(article);
