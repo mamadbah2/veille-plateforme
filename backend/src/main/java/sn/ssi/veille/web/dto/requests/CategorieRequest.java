@@ -1,8 +1,6 @@
 package sn.ssi.veille.web.dto.requests;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
 
 /**
  * DTO pour la création/modification d'une catégorie.
@@ -12,8 +10,8 @@ import jakarta.validation.constraints.Size;
  */
 @Schema(description = "Données pour créer ou modifier une catégorie")
 public record CategorieRequest(
-        String nomCategorie,
-        String description,
-        String couleur,
-        String icone
-) {}
+                String nomCategorie,
+                String description,
+                String couleur,
+                String icone) {
+}

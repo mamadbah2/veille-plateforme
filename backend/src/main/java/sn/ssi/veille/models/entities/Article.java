@@ -10,6 +10,7 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.index.TextIndexed;
+import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
@@ -50,6 +51,11 @@ public class Article {
      * Résumé de l'article (généré ou extrait).
      */
     private String resume;
+
+    /**
+     * Résumé généré par l'IA (sur demande).
+     */
+    private String aiSummary;
 
     /**
      * URL originale de l'article.
@@ -108,4 +114,23 @@ public class Article {
      */
     @LastModifiedDate
     private LocalDateTime updatedAt;
+
+    /**
+     * Liste des IDs d'articles liés (Cross-referencing).
+     */
+    @Builder.Default
+    private java.util.List<String> relatedArticleIds = new java.util.ArrayList<>();
+
+    /**
+     * Vecteur d'embedding (représentation sémantique).
+     */
+    private java.util.List<Double> vector;
+
+    /**
+     * L'histoire (Cluster) auquel l'article appartient.
+     */
+    @DBRef
+    @lombok.ToString.Exclude
+    @lombok.EqualsAndHashCode.Exclude
+    private Story story;
 }

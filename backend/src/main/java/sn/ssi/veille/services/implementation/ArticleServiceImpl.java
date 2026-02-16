@@ -1,0 +1,411 @@
+package sn.ssi.veille.services.implementation;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.stereotype.Service;
+import sn.ssi.veille.exceptions.ArticleNotFoundException;
+import sn.ssi.veille.models.entities.Article;
+import sn.ssi.veille.models.entities.Categorie;
+import sn.ssi.veille.models.entities.Gravite;
+import sn.ssi.veille.models.entities.Source;
+import sn.ssi.veille.models.repositories.ArticleRepository;
+import sn.ssi.veille.models.repositories.CategorieRepository;
+import sn.ssi.veille.models.repositories.SourceRepository;
+import sn.ssi.veille.services.AIService;
+import sn.ssi.veille.services.ArticleService;
+import sn.ssi.veille.services.CrossReferenceService;
+import sn.ssi.veille.web.dto.requests.ArticleRequest;
+import sn.ssi.veille.web.dto.requests.ArticleSearchCriteria;
+import sn.ssi.veille.web.dto.responses.*;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+/**
+ * Implémentation du service Article.
+ * Gère les opérations CRUD et la recherche d'articles.
+ *
+ * @author Équipe Backend SSI
+ * @version 1.0
+ */
+@Service
+public class ArticleServiceImpl implements ArticleService {
+
+    private final ArticleRepository articleRepository;
+    private final SourceRepository sourceRepository;
+    private final CategorieRepository categorieRepository;
+    private final CrossReferenceService crossReferenceService;
+    private final AIService aiService;
+    private final sn.ssi.veille.services.ClusteringService clusteringService;
+
+    public ArticleServiceImpl(ArticleRepository articleRepository,
+            SourceRepository sourceRepository,
+            CategorieRepository categorieRepository,
+            CrossReferenceService crossReferenceService,
+            AIService aiService,
+            sn.ssi.veille.services.ClusteringService clusteringService) {
+        this.articleRepository = articleRepository;
+        this.sourceRepository = sourceRepository;
+        this.categorieRepository = categorieRepository;
+        this.crossReferenceService = crossReferenceService;
+        this.aiService = aiService;
+        this.clusteringService = clusteringService;
+    }
+
+    @Override
+    public ArticleResponse createArticle(ArticleRequest request) {
+        Article article = Article.builder()
+                .titre(request.titre())
+                .contenu(request.contenu())
+                .resume(request.resume())
+                .urlOrigine(request.urlOrigine())
+                .imageUrl(request.imageUrl())
+                .sourceId(request.sourceId())
+                .categorieId(request.categorieId())
+                .gravite(request.gravite() != null ? request.gravite() : Gravite.INFORMATION)
+                .tags(request.tags())
+                .auteur(request.auteur())
+                .datePublication(request.datePublication() != null ? request.datePublication() : LocalDateTime.now())
+                .build();
+
+        Article saved = articleRepository.save(article);
+
+        // Trigger correlation
+        try {
+            crossReferenceService.processCorrelations(saved);
+        } catch (Exception e) {
+            // Log but don't fail creation
+        }
+
+        // Trigger Clustering (Async)
+        try {
+            clusteringService.processClustering(saved);
+        } catch (Exception e) {
+            // Log but don't fail creation
+        }
+
+        // Trigger AI Enrichment (Categorization & Tags) - Async
+        try {
+            aiService.enrichArticle(saved).thenAccept(enriched -> {
+                articleRepository.save(enriched);
+            });
+        } catch (Exception e) {
+            // Log but don't fail creation
+        }
+
+        return toFullResponse(saved);
+    }
+
+    @Override
+    public ArticleResponse getArticleById(String id) {
+        Article article = articleRepository.findById(id)
+                .orElseThrow(() -> new ArticleNotFoundException("Article non trouvé avec l'id: " + id));
+
+        // Incrémenter le nombre de vues
+        article.setNombreVues(article.getNombreVues() + 1);
+        articleRepository.save(article);
+
+        return toFullResponse(article);
+    }
+
+    // ... skipping other methods until generateAISummary ...
+
+    @Override
+    public String generateAISummary(String articleId, String apiKey) {
+        Article article = articleRepository.findById(articleId)
+                .orElseThrow(() -> new ArticleNotFoundException("Article non trouvé avec l'id: " + articleId));
+
+        // Return existing AI summary if available
+        if (article.getAiSummary() != null && !article.getAiSummary().isBlank()) {
+            return article.getAiSummary();
+        }
+
+        if (!aiService.isAvailable()) {
+            throw new RuntimeException("AI Service is not available");
+        }
+
+        try {
+            String summary = aiService.generateSummary(article.getContenu()).join();
+            if (summary != null && !summary.isBlank()) {
+                article.setAiSummary(summary);
+                articleRepository.save(article);
+                return summary;
+            } else {
+                return "Impossible de générer le résumé.";
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Erreur lors de la génération du résumé: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public Article getArticleEntityById(String id) {
+        return articleRepository.findById(id)
+                .orElseThrow(() -> new ArticleNotFoundException("Article non trouvé avec l'id: " + id));
+    }
+
+    @Override
+    public PageResponse<ArticleSummaryResponse> getLatestArticles(int page, int size) {
+        PageRequest pageRequest = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "datePublication"));
+        Page<Article> articlePage = articleRepository.findAll(pageRequest);
+        return toPageResponse(articlePage);
+    }
+
+    @Override
+    public PageResponse<ArticleSummaryResponse> searchArticles(ArticleSearchCriteria criteria) {
+        PageRequest pageRequest = PageRequest.of(
+                criteria.page() != null ? criteria.page() : 0,
+                criteria.size() != null ? criteria.size() : 20,
+                Sort.by(Sort.Direction.DESC, "datePublication"));
+
+        Page<Article> articlePage;
+
+        if (criteria.query() != null && !criteria.query().isBlank()) {
+            if (criteria.categorieId() != null && !criteria.categorieId().isBlank()) {
+                // Recherche Combinée : Mot-clé + Catégorie
+                articlePage = articleRepository.searchByKeywordAndCategory(
+                        criteria.query(), criteria.categorieId(), pageRequest);
+            } else {
+                // Recherche seule
+                articlePage = articleRepository.findByTitreContainingIgnoreCaseOrContenuContainingIgnoreCase(
+                        criteria.query(), criteria.query(), pageRequest);
+            }
+        } else if (criteria.categorieId() != null && !criteria.categorieId().isBlank()) {
+            // Filtre Catégorie seul
+            articlePage = articleRepository.findByCategorieId(criteria.categorieId(), pageRequest);
+        } else {
+            articlePage = articleRepository.findAll(pageRequest);
+        }
+
+        return toPageResponse(articlePage);
+    }
+
+    @Override
+    public PageResponse<ArticleSummaryResponse> getArticlesByCategorie(String categorieId, int page, int size) {
+        PageRequest pageRequest = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "datePublication"));
+        Page<Article> articlePage = articleRepository.findByCategorieId(categorieId, pageRequest);
+        return toPageResponse(articlePage);
+    }
+
+    @Override
+    public PageResponse<ArticleSummaryResponse> getArticlesBySource(String sourceId, int page, int size) {
+        PageRequest pageRequest = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "datePublication"));
+        Page<Article> articlePage = articleRepository.findBySourceId(sourceId, pageRequest);
+        return toPageResponse(articlePage);
+    }
+
+    @Override
+    public PageResponse<ArticleSummaryResponse> getArticlesByGravite(Gravite gravite, int page, int size) {
+        PageRequest pageRequest = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "datePublication"));
+        Page<Article> articlePage = articleRepository.findByGravite(gravite, pageRequest);
+        return toPageResponse(articlePage);
+    }
+
+    @Override
+    public PageResponse<ArticleSummaryResponse> getTrendingArticles(int page, int size) {
+        // Tri Hybride : 1. Gravité (Critique d'abord), 2. Récence, 3. Vues
+        PageRequest pageRequest = PageRequest.of(page, size, Sort.by(
+                Sort.Order.desc("gravite"),
+                Sort.Order.desc("datePublication"),
+                Sort.Order.desc("nombreVues")));
+        Page<Article> articlePage = articleRepository.findAll(pageRequest);
+        return toPageResponse(articlePage);
+    }
+
+    @Override
+    public ArticleResponse updateArticle(String id, ArticleRequest request) {
+        Article article = articleRepository.findById(id)
+                .orElseThrow(() -> new ArticleNotFoundException("Article non trouvé avec l'id: " + id));
+
+        if (request.titre() != null)
+            article.setTitre(request.titre());
+        if (request.contenu() != null)
+            article.setContenu(request.contenu());
+        if (request.resume() != null)
+            article.setResume(request.resume());
+        if (request.urlOrigine() != null)
+            article.setUrlOrigine(request.urlOrigine());
+        if (request.imageUrl() != null)
+            article.setImageUrl(request.imageUrl());
+        if (request.sourceId() != null)
+            article.setSourceId(request.sourceId());
+        if (request.categorieId() != null)
+            article.setCategorieId(request.categorieId());
+        if (request.gravite() != null)
+            article.setGravite(request.gravite());
+        if (request.tags() != null)
+            article.setTags(request.tags());
+        if (request.auteur() != null)
+            article.setAuteur(request.auteur());
+
+        Article updated = articleRepository.save(article);
+
+        // Trigger correlation
+        try {
+            crossReferenceService.processCorrelations(updated);
+        } catch (Exception e) {
+            // Log but don't fail update
+        }
+
+        return toFullResponse(updated);
+    }
+
+    @Override
+    public void deleteArticle(String id) {
+        if (!articleRepository.existsById(id)) {
+            throw new ArticleNotFoundException("Article non trouvé avec l'id: " + id);
+        }
+        articleRepository.deleteById(id);
+    }
+
+    @Override
+    public WeeklySummaryResponse getWeeklySummary() {
+        // TODO: Implémenter le résumé hebdomadaire complet
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime weekAgo = now.minusWeeks(1);
+
+        return new WeeklySummaryResponse(
+                weekAgo,
+                now,
+                articleRepository.count(),
+                List.of(),
+                "Résumé IA non disponible",
+                List.of(),
+                List.of());
+    }
+
+    @Override
+    public boolean articleExists(String urlOrigine, String sourceId) {
+        return articleRepository.existsByUrlOrigineAndSourceId(urlOrigine, sourceId);
+    }
+
+    @Override
+    public List<ArticleSummaryResponse> getRelatedArticles(String id) {
+        Article article = articleRepository.findById(id)
+                .orElseThrow(() -> new ArticleNotFoundException("Article non trouvé avec l'id: " + id));
+
+        if (article.getRelatedArticleIds() == null || article.getRelatedArticleIds().isEmpty()) {
+            return List.of();
+        }
+
+        List<Article> related = articleRepository.findAllById(article.getRelatedArticleIds());
+        return related.stream()
+                .map(this::toSummaryResponse)
+                .toList();
+    }
+
+    // ==================== HELPERS ====================
+
+    private ArticleResponse toFullResponse(Article article) {
+        SourceResponse sourceResponse = null;
+        CategorieResponse categorieResponse = null;
+
+        if (article.getSourceId() != null) {
+            Source source = sourceRepository.findById(article.getSourceId()).orElse(null);
+            if (source != null) {
+                sourceResponse = new SourceResponse(
+                        source.getId(),
+                        source.getUrl(),
+                        source.getNomSource(),
+                        source.getDescription(),
+                        source.getLogoUrl(),
+                        source.getMethodeCollecte(),
+                        source.isActive(),
+                        source.getFrequenceScraping(),
+                        source.getDerniereSyncro(),
+                        source.getNextSyncAt(),
+                        source.getLangue(),
+                        source.getPriorite(),
+                        source.getCategorieParDefaut(),
+                        source.getTrustScore(),
+                        source.isVerified(),
+                        source.getSourceType(),
+                        source.getTotalArticlesCollected(),
+                        source.getArticlesLastSync(),
+                        source.getLastError(),
+                        source.getLastErrorAt(),
+                        source.getConsecutiveFailures(),
+                        source.getCreatedAt());
+            }
+        }
+
+        if (article.getCategorieId() != null) {
+            Categorie categorie = categorieRepository.findById(article.getCategorieId()).orElse(null);
+            if (categorie != null) {
+                categorieResponse = new CategorieResponse(
+                        categorie.getId(),
+                        categorie.getNomCategorie(),
+                        categorie.getDescription(),
+                        categorie.getCouleur(),
+                        categorie.getIcone(),
+                        categorie.getImageUrl(), // Image
+                        0, // Count (ArticleService doesn't compute story count)
+                        categorie.getCreatedAt());
+            }
+        }
+
+        return new ArticleResponse(
+                article.getId(),
+                article.getTitre(),
+                article.getContenu(),
+                article.getResume(),
+                article.getUrlOrigine(),
+                article.getImageUrl(),
+                article.getGravite(),
+                article.getTags(),
+                article.getAuteur(),
+                article.getNombreVues(),
+                article.getDatePublication(),
+                sourceResponse,
+                categorieResponse,
+                article.getCreatedAt());
+    }
+
+    private ArticleSummaryResponse toSummaryResponse(Article article) {
+        String nomSource = null;
+        String nomCategorie = null;
+        String couleurCategorie = null;
+
+        if (article.getSourceId() != null) {
+            Source source = sourceRepository.findById(article.getSourceId()).orElse(null);
+            if (source != null)
+                nomSource = source.getNomSource();
+        }
+
+        if (article.getCategorieId() != null) {
+            Categorie categorie = categorieRepository.findById(article.getCategorieId()).orElse(null);
+            if (categorie != null) {
+                nomCategorie = categorie.getNomCategorie();
+                couleurCategorie = categorie.getCouleur();
+            }
+        }
+
+        return new ArticleSummaryResponse(
+                article.getId(),
+                article.getTitre(),
+                article.getResume(),
+                article.getImageUrl(),
+                article.getGravite(),
+                nomSource,
+                nomCategorie,
+                couleurCategorie,
+                article.getNombreVues(),
+                article.getDatePublication());
+    }
+
+    private PageResponse<ArticleSummaryResponse> toPageResponse(Page<Article> articlePage) {
+        List<ArticleSummaryResponse> content = articlePage.getContent().stream()
+                .map(this::toSummaryResponse)
+                .toList();
+
+        return new PageResponse<>(
+                content,
+                articlePage.getNumber(),
+                articlePage.getSize(),
+                articlePage.getTotalElements(),
+                articlePage.getTotalPages(),
+                articlePage.isFirst(),
+                articlePage.isLast());
+    }
+}

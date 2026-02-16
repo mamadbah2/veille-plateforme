@@ -8,78 +8,82 @@ import sn.ssi.veille.web.dto.requests.ArticleRequest;
 import sn.ssi.veille.web.dto.requests.ArticleSearchCriteria;
 import sn.ssi.veille.web.dto.responses.*;
 
-
 @RequestMapping("/api/v1/articles")
 public interface ArticleController {
-    @GetMapping
-    ResponseEntity<PageResponse<ArticleSummaryResponse>> getLatestArticles(
-        @RequestParam(defaultValue = "0") int page,
-        @RequestParam(defaultValue = "20") int size
-    );
+        @GetMapping
+        ResponseEntity<PageResponse<ArticleSummaryResponse>> getLatestArticles(
+                        @RequestParam(defaultValue = "0") int page,
+                        @RequestParam(defaultValue = "20") int size);
 
-    @GetMapping("/{id}")
-    ResponseEntity<ArticleResponse> getArticleById(
-        @PathVariable String id
-    );
+        @GetMapping("/{id}")
+        ResponseEntity<ArticleResponse> getArticleById(
+                        @PathVariable String id);
 
-    @PostMapping("/search")
-    ResponseEntity<PageResponse<ArticleSummaryResponse>> searchArticles(
-        @RequestBody ArticleSearchCriteria criteria
-    );
+        @GetMapping("/{id}/related")
+        ResponseEntity<java.util.List<ArticleSummaryResponse>> getRelatedArticles(
+                        @PathVariable String id);
 
+        @PostMapping("/search")
+        ResponseEntity<PageResponse<ArticleSummaryResponse>> searchArticles(
+                        @RequestBody ArticleSearchCriteria criteria);
 
-    @GetMapping("/categorie/{categorieId}")
-    ResponseEntity<PageResponse<ArticleSummaryResponse>> getArticlesByCategorie(
-        @PathVariable String categorieId,
-        @RequestParam(defaultValue = "0") int page,
-        @RequestParam(defaultValue = "20") int size
-    );
+        @GetMapping("/categorie/{categorieId}")
+        ResponseEntity<PageResponse<ArticleSummaryResponse>> getArticlesByCategorie(
+                        @PathVariable String categorieId,
+                        @RequestParam(defaultValue = "0") int page,
+                        @RequestParam(defaultValue = "20") int size);
 
-    @GetMapping("/source/{sourceId}")
-    ResponseEntity<PageResponse<ArticleSummaryResponse>> getArticlesBySource(
-        @PathVariable String sourceId,
-        @RequestParam(defaultValue = "0") int page,
-        @RequestParam(defaultValue = "20") int size
-    );
+        @GetMapping("/source/{sourceId}")
+        ResponseEntity<PageResponse<ArticleSummaryResponse>> getArticlesBySource(
+                        @PathVariable String sourceId,
+                        @RequestParam(defaultValue = "0") int page,
+                        @RequestParam(defaultValue = "20") int size);
 
-    @GetMapping("/gravite/{gravite}")
-    ResponseEntity<PageResponse<ArticleSummaryResponse>> getArticlesByGravite(
-        @PathVariable Gravite gravite,
-        @RequestParam(defaultValue = "0") int page,
-        @RequestParam(defaultValue = "20") int size
-    );
+        @GetMapping("/gravite/{gravite}")
+        ResponseEntity<PageResponse<ArticleSummaryResponse>> getArticlesByGravite(
+                        @PathVariable Gravite gravite,
+                        @RequestParam(defaultValue = "0") int page,
+                        @RequestParam(defaultValue = "20") int size);
 
-    @GetMapping("/trending")
-    ResponseEntity<PageResponse<ArticleSummaryResponse>> getTrendingArticles(
-        @RequestParam(defaultValue = "0") int page,
-        @RequestParam(defaultValue = "20") int size
-    );
+        @GetMapping("/trending")
+        ResponseEntity<PageResponse<ArticleSummaryResponse>> getTrendingArticles(
+                        @RequestParam(defaultValue = "0") int page,
+                        @RequestParam(defaultValue = "20") int size);
 
-    @GetMapping("/weekly-summary")
-    ResponseEntity<WeeklySummaryResponse> getWeeklySummary();
+        @GetMapping("/weekly-summary")
+        ResponseEntity<WeeklySummaryResponse> getWeeklySummary();
 
-    // ==================== ENDPOINTS ADMIN ====================
+        // ==================== ENDPOINTS ADMIN ====================
 
-    @PostMapping
-    ResponseEntity<ArticleResponse> createArticle(
-        @Valid @RequestBody ArticleRequest request
-    );
+        @PostMapping
+        ResponseEntity<ArticleResponse> createArticle(
+                        @Valid @RequestBody ArticleRequest request);
 
-    @PutMapping("/{id}")
-    ResponseEntity<ArticleResponse> updateArticle(
-        @PathVariable String id,
-        @Valid @RequestBody ArticleRequest request
-    );
+        @PutMapping("/{id}")
+        ResponseEntity<ArticleResponse> updateArticle(
+                        @PathVariable String id,
+                        @Valid @RequestBody ArticleRequest request);
 
-    @DeleteMapping("/{id}")
-    ResponseEntity<Void> deleteArticle(
-        @PathVariable String id
-    );
+        @DeleteMapping("/{id}")
+        ResponseEntity<Void> deleteArticle(
+                        @PathVariable String id);
 
+        @PostMapping("/{id}/summarize")
+        ResponseEntity<MessageResponse> generateAISummary(
+                        @PathVariable String id,
+                        @RequestParam(required = false) String apiKey);
 
-    @PostMapping("/{id}/summarize")
-    ResponseEntity<MessageResponse> generateAISummary(
-        @PathVariable String id,
-        @RequestParam(required = false) String apiKey
-    );
+        @PostMapping("/test-embedding")
+        ResponseEntity<java.util.List<Double>> testEmbedding(
+                        @RequestBody java.util.Map<String, String> payload);
+
+        @GetMapping("/{id}/verify")
+        ResponseEntity<sn.ssi.veille.models.entities.Article> verifyArticle(
+                        @PathVariable String id);
+
+        @GetMapping("/test-extract")
+        ResponseEntity<String> testContentExtraction(@RequestParam String url);
+
+        @PostMapping("/sync")
+        ResponseEntity<Integer> syncAllSources();
 }

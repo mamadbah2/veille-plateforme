@@ -1,5 +1,4 @@
 package sn.ssi.veille.services;
-
 import sn.ssi.veille.web.dto.requests.LoginRequest;
 import sn.ssi.veille.web.dto.requests.RefreshTokenRequest;
 import sn.ssi.veille.web.dto.requests.RegisterRequest;
@@ -12,6 +11,7 @@ public interface AuthService {
     AuthResponse login(LoginRequest request);
 
     AuthResponse refreshToken(RefreshTokenRequest request);
+
 
     void logout(String userId);
 

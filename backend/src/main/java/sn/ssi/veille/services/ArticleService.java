@@ -13,6 +13,8 @@ public interface ArticleService {
 
     ArticleResponse getArticleById(String id);
 
+    sn.ssi.veille.models.entities.Article getArticleEntityById(String id); // For verification only
+
     PageResponse<ArticleSummaryResponse> getLatestArticles(int page, int size);
 
     PageResponse<ArticleSummaryResponse> searchArticles(ArticleSearchCriteria criteria);
@@ -20,6 +22,9 @@ public interface ArticleService {
     PageResponse<ArticleSummaryResponse> getArticlesByCategorie(String categorieId, int page, int size);
 
     PageResponse<ArticleSummaryResponse> getArticlesBySource(String sourceId, int page, int size);
+
+    PageResponse<ArticleSummaryResponse> getArticlesByGravite(sn.ssi.veille.models.entities.Gravite gravite, int page,
+            int size);
 
     PageResponse<ArticleSummaryResponse> getTrendingArticles(int page, int size);
 
@@ -32,4 +37,6 @@ public interface ArticleService {
     String generateAISummary(String articleId, String apiKey);
 
     boolean articleExists(String urlOrigine, String sourceId);
+
+    java.util.List<ArticleSummaryResponse> getRelatedArticles(String id);
 }
