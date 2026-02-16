@@ -2,7 +2,7 @@ package sn.ssi.veille.services.implementation;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
-import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.ExchangeStrategies;
@@ -114,7 +114,8 @@ public class LMStudioService implements AIService {
                         "temperature", 0.1, // Cryogenic temperature for strict classification
                         "max_tokens", 2000))
                 .retrieve()
-                .bodyToMono(Map.class)
+                .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {
+                })
                 .map(response -> parseAIResponse(response, article))
                 .toFuture()
                 .exceptionally(ex -> {
@@ -212,7 +213,8 @@ public class LMStudioService implements AIService {
                         aiConfig.getEmbeddingModel() != null ? aiConfig.getEmbeddingModel() : aiConfig.getModel(),
                         "input", text))
                 .retrieve()
-                .bodyToMono(Map.class)
+                .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {
+                })
                 .map(response -> {
                     List<Double> embedding = parseEmbeddingResponse((Map<String, Object>) response);
                     return embedding;
@@ -273,7 +275,8 @@ public class LMStudioService implements AIService {
                         "temperature", 0.1, // Low temp for fidelity
                         "max_tokens", 4000))
                 .retrieve()
-                .bodyToMono(Map.class)
+                .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {
+                })
                 .map(response -> {
                     String cleaned = extractContent(response);
                     // Si le parsing échoue ou retourne vide, on garde le texte brut
@@ -316,7 +319,8 @@ public class LMStudioService implements AIService {
                         "temperature", 0.3,
                         "max_tokens", 500))
                 .retrieve()
-                .bodyToMono(Map.class)
+                .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {
+                })
                 .map(response -> {
                     String summary = extractContent(response);
                     return (summary != null && !summary.isBlank()) ? summary : null;
@@ -383,7 +387,8 @@ public class LMStudioService implements AIService {
                         "temperature", 0.3,
                         "max_tokens", 2500))
                 .retrieve()
-                .bodyToMono(Map.class)
+                .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {
+                })
                 .map(response -> {
                     String content = extractContent(response);
                     return cleanJsonBlock(content);

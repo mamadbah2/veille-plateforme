@@ -130,5 +130,7 @@ public class Article {
      * L'histoire (Cluster) auquel l'article appartient.
      */
     @DBRef
+    @lombok.ToString.Exclude
+    @lombok.EqualsAndHashCode.Exclude
     private Story story;
 }

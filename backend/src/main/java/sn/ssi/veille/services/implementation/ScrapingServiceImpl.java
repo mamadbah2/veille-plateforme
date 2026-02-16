@@ -178,7 +178,7 @@ public class ScrapingServiceImpl implements ScrapingService {
 
     @Override
     public int scrapeAllSources() {
-        log.info("Démarrage du scraping de toutes les sources actives");
+        log.info("Démarrage manuel du scraping de toutes les sources actives");
 
         List<Source> activeSources = sourceRepository.findByActiveTrue();
         int totalArticles = 0;
@@ -193,33 +193,12 @@ public class ScrapingServiceImpl implements ScrapingService {
             try {
                 List<Article> articles = scrapeSource(source.getId());
                 totalArticles += articles.size();
-
-                // Mise à jour des stats
-                source.setDerniereSyncro(LocalDateTime.now());
-                source.setArticlesLastSync(articles.size());
-                source.setTotalArticlesCollected(source.getTotalArticlesCollected() + articles.size());
-                source.setConsecutiveFailures(0);
-                source.setNextSyncAt(LocalDateTime.now().plusMinutes(source.getFrequenceScraping()));
-                sourceRepository.save(source);
-
-                log.info("Source {} : {} articles collectés", source.getNomSource(), articles.size());
-
-                // BEST PRACTICE: Pause aléatoire (2-5s) pour respecter les serveurs cibles
-                // (Politeness)
-                try {
-                    long delay = 2000 + (long) (Math.random() * 3000);
-                    log.debug("Pause de {} ms (Politeness)...", delay);
-                    Thread.sleep(delay);
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                }
-
             } catch (Exception e) {
                 handleSourceError(source, e);
             }
         }
 
-        log.info("Scraping terminé : {} articles collectés au total", totalArticles);
+        log.info("Scraping manuel terminé : {} articles collectés au total", totalArticles);
         return totalArticles;
     }
 
@@ -510,7 +489,7 @@ public class ScrapingServiceImpl implements ScrapingService {
     }
 
     // Records pour NIST API
-    record NistResponse(List<NistVulnerability> vulnerabilities) {
+    public record NistResponse(List<NistVulnerability> vulnerabilities) {
     }
 
     record NistVulnerability(Cve cve) {
@@ -631,7 +610,7 @@ public class ScrapingServiceImpl implements ScrapingService {
     /**
      * Record pour parser les réponses Hacker News
      */
-    private record HackerNewsItem(
+    public record HackerNewsItem(
             int id,
             String title,
             String url,

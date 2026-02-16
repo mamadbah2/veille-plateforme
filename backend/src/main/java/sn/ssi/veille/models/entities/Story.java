@@ -46,6 +46,8 @@ public class Story {
 
     // Liste des articles liés à cette story
     @DBRef
+    @lombok.ToString.Exclude
+    @lombok.EqualsAndHashCode.Exclude
     private List<Article> articles;
 
     public enum EtatStory {

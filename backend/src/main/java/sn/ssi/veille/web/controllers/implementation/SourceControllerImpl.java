@@ -3,7 +3,7 @@ package sn.ssi.veille.web.controllers.implementation;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
-import sn.ssi.veille.services.implementation.SourceServiceImpl;
+import sn.ssi.veille.services.SourceService;
 import sn.ssi.veille.services.ScrapingService;
 import sn.ssi.veille.web.controllers.SourceController;
 import sn.ssi.veille.web.dto.requests.SourceRequest;
@@ -22,10 +22,10 @@ import java.util.List;
 @RestController
 public class SourceControllerImpl implements SourceController {
 
-    private final SourceServiceImpl sourceService;
+    private final SourceService sourceService;
     private final ScrapingService scrapingService;
 
-    public SourceControllerImpl(SourceServiceImpl sourceService, ScrapingService scrapingService) {
+    public SourceControllerImpl(SourceService sourceService, ScrapingService scrapingService) {
         this.sourceService = sourceService;
         this.scrapingService = scrapingService;
     }

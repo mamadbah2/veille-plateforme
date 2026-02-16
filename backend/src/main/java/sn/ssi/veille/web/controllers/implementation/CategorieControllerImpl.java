@@ -3,7 +3,7 @@ package sn.ssi.veille.web.controllers.implementation;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
-import sn.ssi.veille.services.implementation.CategorieServiceImpl;
+import sn.ssi.veille.services.CategorieService;
 import sn.ssi.veille.web.controllers.CategorieController;
 import sn.ssi.veille.web.dto.requests.CategorieRequest;
 import sn.ssi.veille.web.dto.responses.CategorieResponse;
@@ -20,9 +20,9 @@ import java.util.List;
 @RestController
 public class CategorieControllerImpl implements CategorieController {
 
-    private final CategorieServiceImpl categorieService;
+    private final CategorieService categorieService;
 
-    public CategorieControllerImpl(CategorieServiceImpl categorieService) {
+    public CategorieControllerImpl(CategorieService categorieService) {
         this.categorieService = categorieService;
     }
 

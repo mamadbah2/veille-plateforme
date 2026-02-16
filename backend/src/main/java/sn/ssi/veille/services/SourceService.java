@@ -13,4 +13,14 @@ public interface SourceService {
 
     List<SourceResponse> getAllSources();
 
+    List<SourceResponse> getActiveSources();
+
+    SourceResponse updateSource(String id, SourceRequest request);
+
+    SourceResponse activateSource(String id);
+
+    SourceResponse deactivateSource(String id);
+
+    void deleteSource(String id);
+
 }
