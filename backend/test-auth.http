@@ -1,0 +1,63 @@
+# Variables
+@baseUrl = http://localhost:4040/api
+
+# ==============================================================================
+# OAuth2 Social Login (à ouvrir dans un navigateur, pas via HTTP client)
+# ==============================================================================
+
+### Google Login - Ouvrir cette URL dans un navigateur
+# GET http://localhost:4040/oauth2/authorization/google
+
+### GitHub Login - Ouvrir cette URL dans un navigateur
+# GET http://localhost:4040/oauth2/authorization/github
+
+# Note: Après authentification réussie, vous serez redirigé vers:
+# http://localhost:4200/auth/callback?token=<JWT_TOKEN>
+
+# ==============================================================================
+# Classic Authentication (Email/Password)
+# ==============================================================================
+
+### Register User
+POST {{baseUrl}}/register
+Content-Type: application/json
+
+{
+  "email": "etudiant@gmail.com",
+  "username": "etudiant",
+  "password": "passer"
+}
+
+### Login User (Email)
+# @name loginRequest
+POST {{baseUrl}}/login
+Content-Type: application/json
+
+{
+  "identifier": "etudiant@gmail.com",
+  "password": "passer"
+}
+
+### Login User (Username)
+# @name loginUsernameRequest
+POST {{baseUrl}}/login
+Content-Type: application/json
+
+{
+  "identifier": "etudiant",
+  "password": "passer"
+}
+
+### Refresh Token (Exemple d'utilisation du token)
+POST {{baseUrl}}/refresh
+Content-Type: application/json
+Authorization: Bearer {{loginRequest.response.body.accessToken}}
+
+{
+  "refreshToken": "your_refresh_token_here"
+}
+
+### Logout (Nécessite le token)
+POST {{baseUrl}}/logout
+Content-Type: application/json
+Authorization: Bearer {{loginRequest.response.body.accessToken}}
