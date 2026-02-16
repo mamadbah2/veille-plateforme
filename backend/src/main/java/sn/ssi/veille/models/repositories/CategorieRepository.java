@@ -13,4 +13,9 @@ import sn.ssi.veille.models.entities.Categorie;
  */
 @Repository
 public interface CategorieRepository extends MongoRepository<Categorie, String> {
+
+    Optional<Categorie> findByNomCategorie(String nomCategorie);
+
+    // Pour la recherche Spotlight
+    java.util.List<Categorie> findByNomCategorieContainingIgnoreCase(String nomCategorie);
 }
