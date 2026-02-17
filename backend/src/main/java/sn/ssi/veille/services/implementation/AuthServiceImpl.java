@@ -22,6 +22,7 @@ import sn.ssi.veille.web.dto.requests.LoginRequest;
 import sn.ssi.veille.web.dto.requests.RefreshTokenRequest;
 import sn.ssi.veille.web.dto.requests.RegisterRequest;
 import sn.ssi.veille.web.dto.responses.AuthResponse;
+import sn.ssi.veille.web.dto.responses.UserResponse;
 import sn.ssi.veille.web.mappers.UserMapper;
 
 @Service
