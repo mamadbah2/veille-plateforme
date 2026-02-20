@@ -16,6 +16,7 @@ Nous avons transformé un simple scraper en une **Plateforme de Veille Intellige
 *   **Clustering (Stories)** : Regroupement intelligent des articles traitant du même sujet pour éviter les doublons (Algo Hybride : Vecteurs + Temporel).
 *   **Synthèse** : Génération de résumés concis et de titres accrocheurs pour les Stories.
 *   **Nettoyage** : "Cleaning" du contenu HTML pour ne garder que le texte pertinent (Markdown).
+*   **Architecture Agnostique** : Service `OpenAICompatibleService` configurable pour tout provider (LM Studio, OpenAI, etc.).
 
 #### B. Le Moteur de Recherche (Spotlight) 🔍
 *   **Smart Search** : Recherche hybride combinant mots-clés (Titre/Contenu) et filtres (Catégorie).

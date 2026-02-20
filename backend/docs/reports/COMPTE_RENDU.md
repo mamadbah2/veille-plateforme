@@ -69,9 +69,35 @@ Nous avons testé le scraping complet sur les sources suivantes :
 ## 🚀 Prochaines Étapes (Phase 3)
 Le système est prêt pour ingérer de la donnée. La prochaine étape est de **donner du sens** à cette donnée via l'IA.
 
-- [ ] **Connecter LM Studio** (Local LLM).
-- [ ] **Classification automatique** des articles (Vulnerabilité, Ransomware, Fuite, etc.).
-- [ ] **Détection de gravité** contextuelle.
+- [x] **Connecter LM Studio** (Local LLM & OpenAI Compatible).
+- [x] **Classification automatique** des articles (Vulnerabilité, Ransomware, Fuite, etc.).
+- [x] **Détection de gravité** contextuelle.
 
 ---
 *Ce document certifie la conformité et la complétude des développements effectués.*
+
+---
+
+## 🤖 5. Module IA (Mise à jour Février 2026)
+Le "Cerveau" du système a étés finalisé et intégré.
+
+### Architecture Agnostique (`OpenAICompatibleService`)
+- **Interface Générique** : `AIService` permet de switcher entre LM Studio (Local), OpenAI, Ollama, etc.
+- **Configuration** : Tout est pilotable via `application.properties` (URL, Clé, Modèles Chat & Embedding distincts).
+- **Extensibilité** : Les prompts système sont externalisés dans `prompts.properties`.
+
+### Fonctionnalités IA Activées
+- **Enrichissement** :
+  - Détection automatique de la **Catégorie** (Security, DevOps, AI...).
+  - Extraction de **Tags** pertinents.
+  - Calcul du score de **Gravité** (CRITIQUE, ELEVE, MOYEN...).
+- **Nettoyage** : Reformulation du contenu HTML pour supprimer le bruit.
+- **Synthèse** : Résumé automatique des articles.
+- **Clustering Sémantique** :
+  - Utilisation d'**Embeddings Vectoriels**.
+  - Regroupement des articles similaires par similarité Cosinus.
+  - Synthèse d'une "Story" globale par l'IA.
+
+### Tests & Validation
+- **Tests Unitaires** : `OpenAICompatibleServiceTest` couvre les cas nominaux et les erreurs (Timeout, API Down).
+- **Robustesse** : Gestion des erreurs API, Fallback en cas d'indisponibilité, Timeouts configurés.
